@@ -32,6 +32,7 @@ export async function createProject(data: {
         budget: data.budget,
         deadline: data.deadline,
         type: data.type,
+        createdAt: new Date(),
         hasProjectCredentials: data.hasProjectCredentials ?? false,
         projectUrl: data.projectUrl,
         cpanelUrl: data.cpanelUrl,

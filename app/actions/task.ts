@@ -24,6 +24,7 @@ export async function createTask(data: {
         description: data.description,
         priority: data.priority,
         dueDate: data.dueDate,
+        createdAt: new Date(),
         order: await prisma.task.count({
             where: { projectId: data.projectId, status: TaskStatus.TODO }
         })

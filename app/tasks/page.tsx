@@ -12,6 +12,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
 import { Task, TaskStatus, TaskPriority, Project, Client } from "@prisma/client";
 
+type TimeRange = "all" | "weekly" | "monthly" | "yearly";
+const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "weekly", label: "Week" },
+  { value: "monthly", label: "Month" },
+  { value: "yearly", label: "Year" },
+];
+
 type TaskWithProject = Task & { project: Project & { client: Client } };
 
 const priorityColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -40,6 +48,7 @@ export default function KanbanBoard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
   const fetchData = async () => {
     try {
@@ -93,8 +102,28 @@ export default function KanbanBoard() {
     ? projects.find((project) => project.id === projectIdFilter)?.title
     : null;
 
+  const isInTimeRange = (dateValue: string | Date) => {
+    if (timeRange === "all") return true;
+
+    const createdAt = new Date(dateValue);
+    const now = new Date();
+    const rangeStart = new Date(now);
+
+    if (timeRange === "weekly") {
+      rangeStart.setDate(now.getDate() - 7);
+    } else if (timeRange === "monthly") {
+      rangeStart.setMonth(now.getMonth() - 1);
+    } else {
+      rangeStart.setFullYear(now.getFullYear() - 1);
+    }
+
+    return createdAt >= rangeStart;
+  };
+
+  const filteredTasks = tasks.filter((task) => isInTimeRange(task.createdAt));
+
   const data = {
-    tasks: tasks.reduce((acc, task) => {
+    tasks: filteredTasks.reduce((acc, task) => {
       acc[task.id] = {
         id: task.id,
         content: task.title,
@@ -109,17 +138,17 @@ export default function KanbanBoard() {
       "col-todo": {
         id: "col-todo",
         title: "To Do",
-        taskIds: tasks.filter((t) => t.status === TaskStatus.TODO).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.TODO).map((t) => t.id),
       },
       "col-inprogress": {
         id: "col-inprogress",
         title: "In Progress",
-        taskIds: tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).map((t) => t.id),
       },
       "col-done": {
         id: "col-done",
         title: "Done",
-        taskIds: tasks.filter((t) => t.status === TaskStatus.DONE).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.DONE).map((t) => t.id),
       },
     },
     columnOrder: ["col-todo", "col-inprogress", "col-done"],
@@ -235,9 +264,27 @@ export default function KanbanBoard() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Task Board</h1>
           <p className="text-white/50">Drag and drop tasks to update their status.</p>
         </div>
-        <AnimatedButton onClick={openCreateModal}>
-          <Plus className="w-5 h-5" /> Add Task
-        </AnimatedButton>
+        <div className="flex w-full md:w-auto flex-col md:flex-row gap-3">
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1">
+            {timeRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTimeRange(option.value)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  timeRange === option.value
+                    ? "bg-indigo-500/30 text-indigo-100"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <AnimatedButton onClick={openCreateModal}>
+            <Plus className="w-5 h-5" /> Add Task
+          </AnimatedButton>
+        </div>
       </div>
 
       {projectIdFilter && (
@@ -374,6 +421,10 @@ export default function KanbanBoard() {
                                                   {taskOverdue && <span className="text-[10px] font-medium">(Overdue)</span>}
                                                 </div>
                                               )}
+
+                                              <div className="mt-2 text-[11px] text-white/40">
+                                                Created {new Date(fullTask?.createdAt || new Date()).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                              </div>
                                             </div>
                                           </div>
                                         </FloatingCard>

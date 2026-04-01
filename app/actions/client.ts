@@ -9,6 +9,7 @@ export async function createClient(data: {
   email: string;
   phone?: string;
   company?: string;
+  address?: string;
   notes?: string;
 }) {
   try {
@@ -22,8 +23,10 @@ export async function createClient(data: {
         email: data.email,
         phone: data.phone,
         company: data.company,
+        address: data.address,
         notes: data.notes,
-      },
+        createdAt: new Date(),
+      } as any,
     });
 
     revalidatePath("/clients");
@@ -36,7 +39,7 @@ export async function createClient(data: {
 
 export async function updateClient(
   id: string,
-  data: { name?: string; email?: string; phone?: string; company?: string; notes?: string }
+  data: { name?: string; email?: string; phone?: string; company?: string; address?: string; notes?: string }
 ) {
   try {
     if (!(await isAdminAuthenticated())) {
@@ -45,7 +48,7 @@ export async function updateClient(
 
     const client = await prisma.client.update({
       where: { id },
-      data,
+      data: data as any,
     });
 
     revalidatePath("/clients");

@@ -70,6 +70,7 @@ model Client {
   email     String    @unique
   phone     String?
   company   String?
+  address   String?
   notes     String?
   avatar    String?
   createdAt DateTime  @default(now())

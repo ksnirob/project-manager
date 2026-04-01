@@ -11,6 +11,14 @@ import { useRouter } from "next/navigation";
 import { createProject, updateProject, deleteProject } from "@/lib/actions";
 import { Project, Client, ProjectStatus } from "@prisma/client";
 
+type TimeRange = "all" | "weekly" | "monthly" | "yearly";
+const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "weekly", label: "Week" },
+  { value: "monthly", label: "Month" },
+  { value: "yearly", label: "Year" },
+];
+
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
   ACTIVE: { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/20" },
   PLANNING: { bg: "bg-blue-500/15", text: "text-blue-400", border: "border-blue-500/20" },
@@ -48,6 +56,7 @@ export default function ProjectsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [includeCredentials, setIncludeCredentials] = useState(false);
   const [viewingProject, setViewingProject] = useState<ProjectWithClient | null>(null);
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
   const fetchData = async () => {
     try {
@@ -197,6 +206,28 @@ export default function ProjectsPage() {
     ? [editingProject.type, ...projectTypes]
     : projectTypes;
 
+  const isInTimeRange = (dateValue: string | Date) => {
+    if (timeRange === "all") return true;
+
+    const createdAt = new Date(dateValue);
+    const now = new Date();
+    const rangeStart = new Date(now);
+
+    if (timeRange === "weekly") {
+      rangeStart.setDate(now.getDate() - 7);
+    } else if (timeRange === "monthly") {
+      rangeStart.setMonth(now.getMonth() - 1);
+    } else {
+      rangeStart.setFullYear(now.getFullYear() - 1);
+    }
+
+    return createdAt >= rangeStart;
+  };
+
+  const filteredProjects = projects
+    .filter((project) => isInTimeRange(project.createdAt))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -204,10 +235,28 @@ export default function ProjectsPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Projects</h1>
           <p className="text-white/50">Manage and track all your projects in one place.</p>
         </div>
-        <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
-          <Plus className="w-5 h-5" />
-          New Project
-        </AnimatedButton>
+        <div className="flex w-full md:w-auto flex-col md:flex-row gap-3">
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1">
+            {timeRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTimeRange(option.value)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  timeRange === option.value
+                    ? "bg-indigo-500/30 text-indigo-100"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
+            <Plus className="w-5 h-5" />
+            New Project
+          </AnimatedButton>
+        </div>
       </div>
 
       {isLoading ? (
@@ -216,11 +265,13 @@ export default function ProjectsPage() {
             <div key={i} className="h-56 bg-white/5 rounded-2xl animate-pulse" />
           ))}
         </div>
-      ) : projects.length === 0 ? (
+      ) : filteredProjects.length === 0 ? (
         <FloatingCard className="text-center py-20">
           <Folder className="w-20 h-20 mx-auto mb-6 text-white/15" />
           <p className="text-white/50 text-xl mb-2">No projects yet</p>
-          <p className="text-white/30 mb-8">Create your first project to get started.</p>
+          <p className="text-white/30 mb-8">
+            {timeRange === "all" ? "Create your first project to get started." : "No projects found in this time range."}
+          </p>
           <AnimatedButton onClick={openCreateModal}>
             <Plus className="w-4 h-4" />
             Create First Project
@@ -228,7 +279,7 @@ export default function ProjectsPage() {
         </FloatingCard>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project, i) => {
+          {filteredProjects.map((project, i) => {
             const statusStyle = getStatusStyle(project.status);
             return (
               <motion.div
@@ -302,6 +353,10 @@ export default function ProjectsPage() {
                         )}
                       </div>
 
+                      <div className="text-xs text-white/45">
+                        Created {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </div>
+
                       <div className="relative">
                         <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
                           <div
@@ -321,7 +376,7 @@ export default function ProjectsPage() {
                       <button
                         type="button"
                         onClick={() => openViewProjectModal(project)}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/60 hover:text-white transition-colors"
+                        className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/60 hover:text-white transition-colors"
                       >
                         View Project <Eye size={14} />
                       </button>

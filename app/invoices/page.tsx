@@ -4,11 +4,19 @@ import { useState, useEffect } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, ChevronDown } from "lucide-react";
+import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, ChevronDown, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/actions";
 import { Invoice, InvoiceStatus, Client } from "@prisma/client";
 import { jsPDF } from "jspdf";
+
+type TimeRange = "all" | "weekly" | "monthly" | "yearly";
+const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "weekly", label: "Week" },
+  { value: "monthly", label: "Month" },
+  { value: "yearly", label: "Year" },
+];
 
 type InvoiceWithClient = Invoice & { client: Client };
 
@@ -30,6 +38,9 @@ export default function InvoicesPage() {
   const [totalOutstanding, setTotalOutstanding] = useState(0);
   const [collectedThisMonth, setCollectedThisMonth] = useState(0);
   const [totalPaid, setTotalPaid] = useState(0);
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [viewingInvoice, setViewingInvoice] = useState<InvoiceWithClient | null>(null);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -63,6 +74,14 @@ export default function InvoicesPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewPdfUrl) {
+        URL.revokeObjectURL(previewPdfUrl);
+      }
+    };
+  }, [previewPdfUrl]);
 
   const handleCreateInvoice = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -176,18 +195,7 @@ export default function InvoicesPage() {
     setEditingInvoice(null);
   };
 
-  const filteredInvoices = (invoices ?? []).filter(
-    (inv) =>
-      inv.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.invoiceNo.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const isOverdue = (dueDate: Date | null, status: InvoiceStatus) => {
-    if (!dueDate || status === InvoiceStatus.PAID) return false;
-    return new Date(dueDate) < new Date();
-  };
-
-  const handleDownloadInvoice = (invoice: InvoiceWithClient) => {
+  const createInvoicePdf = (invoice: InvoiceWithClient) => {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -285,6 +293,77 @@ export default function InvoicesPage() {
     doc.setTextColor(100, 116, 139);
     doc.text("Thank you for your business.", 48, pageHeight - 48);
 
+    return doc;
+  };
+
+  const openPreviewModal = (invoice: InvoiceWithClient) => {
+    const doc = createInvoicePdf(invoice);
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+
+    if (previewPdfUrl) {
+      URL.revokeObjectURL(previewPdfUrl);
+    }
+
+    setViewingInvoice(invoice);
+    setPreviewPdfUrl(url);
+    setMenuOpen(null);
+  };
+
+  const closePreviewModal = () => {
+    if (previewPdfUrl) {
+      URL.revokeObjectURL(previewPdfUrl);
+    }
+    setPreviewPdfUrl(null);
+    setViewingInvoice(null);
+  };
+
+  const isInTimeRange = (dateValue: string | Date) => {
+    if (timeRange === "all") return true;
+
+    const createdAt = new Date(dateValue);
+    const now = new Date();
+    const rangeStart = new Date(now);
+
+    if (timeRange === "weekly") {
+      rangeStart.setDate(now.getDate() - 7);
+    } else if (timeRange === "monthly") {
+      rangeStart.setMonth(now.getMonth() - 1);
+    } else {
+      rangeStart.setFullYear(now.getFullYear() - 1);
+    }
+
+    return createdAt >= rangeStart;
+  };
+
+  const filteredInvoices = (invoices ?? [])
+    .filter(
+      (inv) =>
+        (inv.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          inv.invoiceNo.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        isInTimeRange(inv.createdAt)
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const totalOutstandingInRange = filteredInvoices
+    .filter((inv) => inv.status !== InvoiceStatus.PAID)
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const totalPaidInRange = filteredInvoices
+    .filter((inv) => inv.status === InvoiceStatus.PAID)
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const collectedInRange = filteredInvoices
+    .filter((inv) => Boolean(inv.paidAt))
+    .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const isOverdue = (dueDate: Date | null, status: InvoiceStatus) => {
+    if (!dueDate || status === InvoiceStatus.PAID) return false;
+    return new Date(dueDate) < new Date();
+  };
+
+  const handleDownloadInvoice = (invoice: InvoiceWithClient) => {
+    const doc = createInvoicePdf(invoice);
     doc.save(`${invoice.invoiceNo}.pdf`);
   };
 
@@ -295,10 +374,28 @@ export default function InvoicesPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Invoices</h1>
           <p className="text-white/50">Generate and track payments from clients.</p>
         </div>
-        <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
-          <Plus className="w-5 h-5" />
-          Create Invoice
-        </AnimatedButton>
+        <div className="flex w-full md:w-auto flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1">
+            {timeRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTimeRange(option.value)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  timeRange === option.value
+                    ? "bg-indigo-500/30 text-indigo-100"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
+            <Plus className="w-5 h-5" />
+            Create Invoice
+          </AnimatedButton>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -325,7 +422,7 @@ export default function InvoicesPage() {
               <FloatingCard className="text-center py-16">
                 <FileText className="w-16 h-16 mx-auto mb-4 text-white/20" />
                 <p className="text-white/50 text-lg mb-2">
-                  {searchQuery ? "No invoices match your search." : "No invoices yet."}
+                    {searchQuery ? "No invoices match your search." : timeRange === "all" ? "No invoices yet." : "No invoices in this range."}
                 </p>
                 <p className="text-white/30 text-sm mb-6">
                   {searchQuery ? "Try a different search term." : "Create your first invoice to get started."}
@@ -410,6 +507,13 @@ export default function InvoicesPage() {
 
                         <div className="flex items-center gap-1 lg:ml-4">
                           <button
+                            onClick={() => openPreviewModal(invoice)}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                            title="Preview invoice"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
                             onClick={() => handleDownloadInvoice(invoice)}
                             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
                             title="Download invoice"
@@ -457,21 +561,21 @@ export default function InvoicesPage() {
               <div>
                 <p className="text-sm text-white/50 mb-1">Total Outstanding</p>
                 <p className="text-3xl font-bold text-red-400">
-                  ${totalOutstanding.toLocaleString()}
+                  ${totalOutstandingInRange.toLocaleString()}
                 </p>
               </div>
               <div className="w-full h-px bg-white/10" />
               <div>
-                <p className="text-sm text-white/50 mb-1">Collected This Month</p>
+                <p className="text-sm text-white/50 mb-1">Collected ({timeRange === "all" ? "All Time" : timeRange[0].toUpperCase() + timeRange.slice(1)})</p>
                 <p className="text-2xl font-bold text-emerald-400">
-                  ${collectedThisMonth.toLocaleString()}
+                  ${collectedInRange.toLocaleString()}
                 </p>
               </div>
               <div className="w-full h-px bg-white/10" />
               <div>
-                <p className="text-sm text-white/50 mb-1">Total Paid (All Time)</p>
+                <p className="text-sm text-white/50 mb-1">Total Paid ({timeRange === "all" ? "All Time" : timeRange[0].toUpperCase() + timeRange.slice(1)})</p>
                 <p className="text-2xl font-bold text-indigo-400">
-                  ${totalPaid.toLocaleString()}
+                  ${totalPaidInRange.toLocaleString()}
                 </p>
               </div>
             </div>
@@ -485,21 +589,21 @@ export default function InvoicesPage() {
                   <div className="w-2 h-2 rounded-full bg-red-500" />
                   <span className="text-sm text-white/60">Unpaid</span>
                 </div>
-                <span className="text-sm font-medium">{invoices.filter(i => i.status === InvoiceStatus.UNPAID).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.UNPAID).length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-sm text-white/60">Partial</span>
                 </div>
-                <span className="text-sm font-medium">{invoices.filter(i => i.status === InvoiceStatus.PARTIAL).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.PARTIAL).length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span className="text-sm text-white/60">Paid</span>
                 </div>
-                <span className="text-sm font-medium">{invoices.filter(i => i.status === InvoiceStatus.PAID).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.PAID).length}</span>
               </div>
             </div>
           </FloatingCard>
@@ -585,6 +689,37 @@ export default function InvoicesPage() {
             </AnimatedButton>
           </div>
         </form>
+      </GlassModal>
+
+      <GlassModal
+        isOpen={Boolean(viewingInvoice)}
+        onClose={closePreviewModal}
+        title="Invoice Preview"
+        className="max-w-5xl"
+      >
+        {viewingInvoice && previewPdfUrl && (
+          <div className="space-y-5">
+            <div className="h-[70vh] rounded-xl border border-white/10 bg-white overflow-hidden">
+              <iframe
+                src={previewPdfUrl}
+                title={`Preview ${viewingInvoice.invoiceNo}`}
+                className="w-full h-full"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <AnimatedButton type="button" variant="ghost" onClick={closePreviewModal}>
+                Close
+              </AnimatedButton>
+              <AnimatedButton
+                type="button"
+                onClick={() => handleDownloadInvoice(viewingInvoice)}
+              >
+                <Download size={16} /> Download PDF
+              </AnimatedButton>
+            </div>
+          </div>
+        )}
       </GlassModal>
     </div>
   );

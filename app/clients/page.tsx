@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, MoreVertical, Mail, Phone, Building, Edit, Trash2, User } from "lucide-react";
+import { Plus, Search, MoreVertical, Mail, Phone, Building, Edit, Trash2, User, CalendarDays, MapPin } from "lucide-react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
@@ -9,6 +9,14 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient, updateClient, deleteClient } from "@/lib/actions";
 import { Client } from "@prisma/client";
+
+type TimeRange = "all" | "weekly" | "monthly" | "yearly";
+const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "weekly", label: "Week" },
+  { value: "monthly", label: "Month" },
+  { value: "yearly", label: "Year" },
+];
 
 const avatarColors = [
   "from-indigo-500/20 to-purple-500/20",
@@ -27,6 +35,7 @@ export default function ClientsPage() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
   const fetchClients = async () => {
     try {
@@ -67,6 +76,7 @@ export default function ClientsPage() {
       email: formData.get("email") as string,
       phone: formData.get("phone") as string || undefined,
       company: formData.get("company") as string || undefined,
+      address: formData.get("address") as string || undefined,
       notes: formData.get("notes") as string || undefined,
     };
 
@@ -105,12 +115,33 @@ export default function ClientsPage() {
     setIsModalOpen(true);
   };
 
-  const filteredClients = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const isInTimeRange = (dateValue: string | Date) => {
+    if (timeRange === "all") return true;
+
+    const createdAt = new Date(dateValue);
+    const now = new Date();
+    const rangeStart = new Date(now);
+
+    if (timeRange === "weekly") {
+      rangeStart.setDate(now.getDate() - 7);
+    } else if (timeRange === "monthly") {
+      rangeStart.setMonth(now.getMonth() - 1);
+    } else {
+      rangeStart.setFullYear(now.getFullYear() - 1);
+    }
+
+    return createdAt >= rangeStart;
+  };
+
+  const filteredClients = clients
+    .filter(
+      (c) =>
+        (c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.email.toLowerCase().includes(searchTerm.toLowerCase())) &&
+        isInTimeRange(c.createdAt)
+    )
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const getAvatarColor = (name: string) => {
     const index = name.charCodeAt(0) % avatarColors.length;
@@ -124,10 +155,28 @@ export default function ClientsPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Clients</h1>
           <p className="text-white/50">Manage your business connections and relationships.</p>
         </div>
-        <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
-          <Plus className="w-5 h-5" />
-          Add Client
-        </AnimatedButton>
+        <div className="flex w-full md:w-auto flex-col sm:flex-row gap-2 sm:items-center">
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1">
+            {timeRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTimeRange(option.value)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                  timeRange === option.value
+                    ? "bg-indigo-500/30 text-indigo-100"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
+            <Plus className="w-5 h-5" />
+            Add Client
+          </AnimatedButton>
+        </div>
       </div>
 
       <FloatingCard className="!p-4 z-20">
@@ -236,6 +285,16 @@ export default function ClientsPage() {
                         {client.company}
                       </div>
                     )}
+                    {client.address && (
+                      <div className="flex items-center gap-3 text-sm text-white/60">
+                        <MapPin size={16} className="text-amber-400/60" />
+                        {client.address}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 text-sm text-white/50">
+                      <CalendarDays size={16} className="text-blue-400/50" />
+                      Created {new Date(client.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
                   </div>
                 </div>
               </FloatingCard>
@@ -292,6 +351,16 @@ export default function ClientsPage() {
               name="phone"
               placeholder="+1 (555) 000-0000"
               defaultValue={editingClient?.phone || ""}
+              className="w-full"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-white/80">Address</label>
+            <input
+              type="text"
+              name="address"
+              placeholder="Street, City, Country"
+              defaultValue={editingClient?.address || ""}
               className="w-full"
             />
           </div>
