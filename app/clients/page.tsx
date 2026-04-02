@@ -71,20 +71,33 @@ export default function ClientsPage() {
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
 
+    const getOptionalField = (field: string) => {
+      const value = formData.get(field)?.toString().trim();
+      return value ? value : null;
+    };
+
     const data = {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
-      phone: formData.get("phone") as string || undefined,
-      company: formData.get("company") as string || undefined,
-      address: formData.get("address") as string || undefined,
-      notes: formData.get("notes") as string || undefined,
+      phone: getOptionalField("phone"),
+      company: getOptionalField("company"),
+      address: getOptionalField("address"),
+      notes: getOptionalField("notes"),
     };
 
     try {
       if (editingClient) {
-        await updateClient(editingClient.id, data);
+        const result = await updateClient(editingClient.id, data);
+        if (!result.success) {
+          alert(result.error || "Failed to update client");
+          return;
+        }
       } else {
-        await createClient(data);
+        const result = await createClient(data);
+        if (!result.success) {
+          alert(result.error || "Failed to create client");
+          return;
+        }
       }
       await fetchClients();
       setIsModalOpen(false);

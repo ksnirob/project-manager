@@ -8,9 +8,21 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const clients = await prisma.client.findMany({
-      orderBy: { name: "asc" },
-    });
+    const clients = await prisma.$queryRaw`
+      SELECT
+        \`id\`,
+        \`name\`,
+        \`email\`,
+        \`phone\`,
+        \`company\`,
+        \`address\`,
+        \`notes\`,
+        \`avatar\`,
+        \`createdAt\`,
+        \`updatedAt\`
+      FROM \`Client\`
+      ORDER BY \`name\` ASC
+    `;
     return NextResponse.json(clients);
   } catch (error) {
     console.error("Failed to fetch clients:", error);

@@ -2,7 +2,7 @@
 // Using SQLite for local dev - swap to MySQL for production
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
 }
 

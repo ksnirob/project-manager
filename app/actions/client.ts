@@ -7,10 +7,10 @@ import { isAdminAuthenticated } from "@/lib/auth";
 export async function createClient(data: {
   name: string;
   email: string;
-  phone?: string;
-  company?: string;
-  address?: string;
-  notes?: string;
+  phone?: string | null;
+  company?: string | null;
+  address?: string | null;
+  notes?: string | null;
 }) {
   try {
     if (!(await isAdminAuthenticated())) {
@@ -23,11 +23,18 @@ export async function createClient(data: {
         email: data.email,
         phone: data.phone,
         company: data.company,
-        address: data.address,
         notes: data.notes,
         createdAt: new Date(),
-      } as any,
+      },
     });
+
+    if (data.address !== undefined) {
+      await prisma.$executeRaw`
+        UPDATE \`Client\`
+        SET \`address\` = ${data.address}
+        WHERE \`id\` = ${client.id}
+      `;
+    }
 
     revalidatePath("/clients");
     return { success: true, data: client };
@@ -39,23 +46,45 @@ export async function createClient(data: {
 
 export async function updateClient(
   id: string,
-  data: { name?: string; email?: string; phone?: string; company?: string; address?: string; notes?: string }
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string | null;
+    company?: string | null;
+    address?: string | null;
+    notes?: string | null;
+  }
 ) {
   try {
     if (!(await isAdminAuthenticated())) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const client = await prisma.client.update({
-      where: { id },
-      data: data as any,
-    });
+    const { address, ...otherFields } = data;
+
+    if (Object.keys(otherFields).length > 0) {
+      await prisma.client.update({
+        where: { id },
+        data: otherFields,
+      });
+    }
+
+    if (address !== undefined) {
+      await prisma.$executeRaw`
+        UPDATE \`Client\`
+        SET \`address\` = ${address}
+        WHERE \`id\` = ${id}
+      `;
+    }
 
     revalidatePath("/clients");
-    return { success: true, data: client };
+    return { success: true };
   } catch (error) {
     console.error("Failed to update client:", error);
-    return { success: false, error: "Failed to update client" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update client",
+    };
   }
 }
 
