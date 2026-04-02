@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createProject, updateProject, deleteProject } from "@/lib/actions";
-import { Project, Client, ProjectStatus } from "@prisma/client";
+import type { Project, Client, ProjectStatus } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
 const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [

@@ -8,7 +8,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient, updateClient, deleteClient } from "@/lib/actions";
-import { Client } from "@prisma/client";
+import type { Client } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
 const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [

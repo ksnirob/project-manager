@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 import { FloatingCard } from "@/components/ui/FloatingCard";
@@ -10,7 +10,7 @@ import { Plus, GripVertical, Trash2, Edit, Calendar, Clock } from "lucide-react"
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
-import { Task, TaskStatus, TaskPriority, Project, Client } from "@prisma/client";
+import type { Task, TaskStatus, TaskPriority, Project, Client } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
 const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
@@ -37,7 +37,7 @@ const columnColors: Record<string, { header: string; border: string; bg: string 
 
 type TaskData = Record<string, { id: string; content: string; priority: string; projectId: string; description?: string; dueDate?: Date | null }>;
 
-export default function KanbanBoard() {
+function KanbanBoardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectIdFilter = searchParams.get("projectId");
@@ -138,17 +138,17 @@ export default function KanbanBoard() {
       "col-todo": {
         id: "col-todo",
         title: "To Do",
-        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.TODO).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === "TODO").map((t) => t.id),
       },
       "col-inprogress": {
         id: "col-inprogress",
         title: "In Progress",
-        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.IN_PROGRESS).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === "IN_PROGRESS").map((t) => t.id),
       },
       "col-done": {
         id: "col-done",
         title: "Done",
-        taskIds: filteredTasks.filter((t) => t.status === TaskStatus.DONE).map((t) => t.id),
+        taskIds: filteredTasks.filter((t) => t.status === "DONE").map((t) => t.id),
       },
     },
     columnOrder: ["col-todo", "col-inprogress", "col-done"],
@@ -161,9 +161,9 @@ export default function KanbanBoard() {
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
     const statusMap: Record<string, TaskStatus> = {
-      "col-todo": TaskStatus.TODO,
-      "col-inprogress": TaskStatus.IN_PROGRESS,
-      "col-done": TaskStatus.DONE,
+      "col-todo": "TODO",
+      "col-inprogress": "IN_PROGRESS",
+      "col-done": "DONE",
     };
 
     const newStatus = statusMap[destination.droppableId];
@@ -541,5 +541,13 @@ export default function KanbanBoard() {
         </form>
       </GlassModal>
     </div>
+  );
+}
+
+export default function KanbanBoard() {
+  return (
+    <Suspense fallback={<div className="p-4 text-white/60">Loading tasks...</div>}>
+      <KanbanBoardContent />
+    </Suspense>
   );
 }

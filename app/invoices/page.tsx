@@ -7,7 +7,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, ChevronDown, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/actions";
-import { Invoice, InvoiceStatus, Client } from "@prisma/client";
+import type { Invoice, InvoiceStatus, Client } from "@prisma/client";
 import { jsPDF } from "jspdf";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -346,11 +346,11 @@ export default function InvoicesPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const totalOutstandingInRange = filteredInvoices
-    .filter((inv) => inv.status !== InvoiceStatus.PAID)
+    .filter((inv) => inv.status !== "PAID")
     .reduce((sum, inv) => sum + inv.amount, 0);
 
   const totalPaidInRange = filteredInvoices
-    .filter((inv) => inv.status === InvoiceStatus.PAID)
+    .filter((inv) => inv.status === "PAID")
     .reduce((sum, inv) => sum + inv.amount, 0);
 
   const collectedInRange = filteredInvoices
@@ -358,7 +358,7 @@ export default function InvoicesPage() {
     .reduce((sum, inv) => sum + inv.amount, 0);
 
   const isOverdue = (dueDate: Date | null, status: InvoiceStatus) => {
-    if (!dueDate || status === InvoiceStatus.PAID) return false;
+    if (!dueDate || status === "PAID") return false;
     return new Date(dueDate) < new Date();
   };
 
@@ -589,21 +589,21 @@ export default function InvoicesPage() {
                   <div className="w-2 h-2 rounded-full bg-red-500" />
                   <span className="text-sm text-white/60">Unpaid</span>
                 </div>
-                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.UNPAID).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === "UNPAID").length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-sm text-white/60">Partial</span>
                 </div>
-                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.PARTIAL).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === "PARTIAL").length}</span>
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span className="text-sm text-white/60">Paid</span>
                 </div>
-                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === InvoiceStatus.PAID).length}</span>
+                <span className="text-sm font-medium">{filteredInvoices.filter(i => i.status === "PAID").length}</span>
               </div>
             </div>
           </FloatingCard>
