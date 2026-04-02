@@ -6,10 +6,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const databaseUrl = process.env.DATABASE_URL;
+const fallbackDatabaseUrl = "mysql://placeholder:placeholder@127.0.0.1:3306/placeholder";
+const databaseUrl = process.env.DATABASE_URL || fallbackDatabaseUrl;
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is not set");
+if (!process.env.DATABASE_URL) {
+  console.warn("DATABASE_URL is not set. Prisma is using a placeholder URL for build-time import safety.");
 }
 
 const parsedDbUrl = new URL(databaseUrl);
