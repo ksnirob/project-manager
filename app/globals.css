@@ -1,14 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #eef2f8;
+  --foreground: #111827;
   --primary: #6366f1;
   --primary-dark: #4f46e5;
   --accent: #f472b6;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --card-bg: rgba(255, 255, 255, 0.78);
+  --card-border: rgba(15, 23, 42, 0.1);
+  --card-hover: rgba(255, 255, 255, 0.95);
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
   --card-bg: rgba(255, 255, 255, 0.03);
   --card-border: rgba(255, 255, 255, 0.08);
   --card-hover: rgba(255, 255, 255, 0.06);
@@ -22,11 +30,18 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 90% 50%, rgba(244, 114, 182, 0.1), transparent);
+    radial-gradient(ellipse 70% 45% at 45% -18%, rgba(99, 102, 241, 0.16), transparent),
+    radial-gradient(ellipse 54% 38% at 95% 40%, rgba(14, 165, 233, 0.12), transparent),
+    linear-gradient(135deg, #f8fafc 0%, #edf2ff 52%, #eef6ff 100%);
   background-attachment: fixed;
   font-weight: 400;
   letter-spacing: -0.01em;
+}
+
+.dark body {
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+    radial-gradient(ellipse 60% 40% at 90% 50%, rgba(244, 114, 182, 0.1), transparent);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -78,6 +93,33 @@ select option {
   color: #fff;
 }
 
+.light input[type="text"],
+.light input[type="email"],
+.light input[type="password"],
+.light input[type="url"],
+.light input[type="number"],
+.light input[type="date"],
+.light textarea,
+.light select {
+  color: #111827;
+  background-color: rgba(255, 255, 255, 0.86);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}
+
+.light input::placeholder,
+.light textarea::placeholder {
+  color: rgba(15, 23, 42, 0.4);
+}
+
+.light select option {
+  background: #fff;
+  color: #111827;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -126,4 +168,273 @@ select option {
 .glass-card:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.12);
+}
+
+.light .bg-space-gradient {
+  background-image:
+    radial-gradient(circle at 70% 12%, rgba(99, 102, 241, 0.12), transparent 30%),
+    linear-gradient(to bottom right, #f8fafc, #e9eef8 55%, #eef6ff) !important;
+}
+
+.light .glass-card,
+.light .bg-white\/\[0\.03\].backdrop-blur-xl,
+.light .bg-white\/5.backdrop-blur-xl {
+  background-color: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(15, 23, 42, 0.11) !important;
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.1), 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+}
+
+.light .glass-card,
+.light .bg-white\/5,
+.light .bg-white\/10,
+.light .bg-white\/15,
+.light .bg-white\/20,
+.light .bg-white\/\[0\.02\],
+.light .bg-white\/\[0\.03\],
+.light .bg-white\/\[0\.04\],
+.light .bg-white\/\[0\.05\],
+.light .bg-white\/\[0\.06\],
+.light .bg-white\/\[0\.78\] {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.light .bg-black\/10,
+.light .bg-black\/25,
+.light .bg-black\/40,
+.light .bg-black\/60,
+.light .bg-zinc-900\/95,
+.light .bg-zinc-950\/90,
+.light .bg-zinc-950\/45 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.light .hover\:bg-white\/5:hover,
+.light .hover\:bg-white\/10:hover,
+.light .hover\:bg-white\/15:hover,
+.light .hover\:bg-white\/\[0\.06\]:hover {
+  background-color: rgba(99, 102, 241, 0.08) !important;
+}
+
+.light .border-white\/10,
+.light .border-white\/15,
+.light .border-white\/20,
+.light .border-white\/30,
+.light .border-white\/\[0\.04\],
+.light .border-white\/\[0\.08\] {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.light .hover\:border-white\/15:hover {
+  border-color: rgba(15, 23, 42, 0.16) !important;
+}
+
+.light .text-white {
+  color: #111827 !important;
+}
+
+.light .text-white\/90 {
+  color: rgba(17, 24, 39, 0.9) !important;
+}
+
+.light .text-white\/80 {
+  color: rgba(17, 24, 39, 0.8) !important;
+}
+
+.light .text-white\/75 {
+  color: rgba(17, 24, 39, 0.75) !important;
+}
+
+.light .text-white\/70 {
+  color: rgba(17, 24, 39, 0.7) !important;
+}
+
+.light .text-white\/65,
+.light .text-white\/60 {
+  color: rgba(17, 24, 39, 0.62) !important;
+}
+
+.light .text-white\/55,
+.light .text-white\/50 {
+  color: rgba(17, 24, 39, 0.54) !important;
+}
+
+.light .text-white\/45,
+.light .text-white\/40 {
+  color: rgba(17, 24, 39, 0.44) !important;
+}
+
+.light .text-white\/35,
+.light .text-white\/30 {
+  color: rgba(17, 24, 39, 0.34) !important;
+}
+
+.light .text-white\/25,
+.light .text-white\/20,
+.light .text-white\/15 {
+  color: rgba(17, 24, 39, 0.24) !important;
+}
+
+.light .hover\:text-white:hover,
+.light .hover\:text-white\/45:hover,
+.light .hover\:text-white\/60:hover {
+  color: #111827 !important;
+}
+
+.light .bg-indigo-500.text-white,
+.light .bg-indigo-500 .text-white,
+.light .from-blue-500.text-white,
+.light .from-blue-500 .text-white,
+.light .bg-gradient-to-tr.text-white,
+.light .bg-gradient-to-tr .text-white {
+  color: #fff !important;
+}
+
+.light .shadow-\[0_8px_32px_rgba\(0\,0\,0\,0\.3\)\],
+.light .shadow-\[0_8px_32px_0_rgba\(0\,0\,0\,0\.37\)\],
+.light .shadow-2xl {
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.1), 0 1px 0 rgba(255, 255, 255, 0.85) inset !important;
+}
+
+.light nav {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.light nav [data-active-nav="true"] {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(59, 130, 246, 0.08)) !important;
+  border-color: rgba(99, 102, 241, 0.24) !important;
+}
+
+.light button.bg-indigo-500,
+.light .bg-indigo-500.hover\:bg-indigo-600 {
+  box-shadow: 0 14px 28px rgba(79, 70, 229, 0.22) !important;
+}
+
+.light .project-card:not(.completed-project-card) {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.86)) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.1), 0 1px 0 rgba(255, 255, 255, 0.92) inset !important;
+}
+
+.light .completed-project-card {
+  background: linear-gradient(145deg, rgba(226, 232, 240, 0.82), rgba(241, 245, 249, 0.72)) !important;
+  border-color: rgba(100, 116, 139, 0.24) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06) !important;
+  filter: grayscale(1) saturate(0) brightness(0.96) contrast(0.86) !important;
+}
+
+.light .completed-project-overlay {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+.light .completed-project-card .bg-white\/\[0\.03\],
+.light .completed-project-card .bg-white\/\[0\.04\],
+.light .completed-project-card .bg-white\/\[0\.06\] {
+  background-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+.light .rich-text-content h1,
+.light .rich-text-content h2,
+.light .rich-text-content h3,
+.light .rich-text-content h4 {
+  color: #111827;
+}
+
+.rich-text-editor[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.rich-text-content {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.rich-text-content h1,
+.rich-text-content h2,
+.rich-text-content h3,
+.rich-text-content h4 {
+  color: #fff;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.8rem 0 0.35rem;
+}
+
+.rich-text-content h1 {
+  font-size: 1.5rem;
+}
+
+.rich-text-content h2 {
+  font-size: 1.25rem;
+}
+
+.rich-text-content h3,
+.rich-text-content h4 {
+  font-size: 1.05rem;
+}
+
+.rich-text-content p,
+.rich-text-content ul,
+.rich-text-content ol,
+.rich-text-content blockquote,
+.rich-text-content pre {
+  margin: 0.55rem 0;
+}
+
+.rich-text-content ul,
+.rich-text-content ol {
+  padding-left: 1.35rem;
+}
+
+.rich-text-content ul {
+  list-style: disc;
+}
+
+.rich-text-content ol {
+  list-style: decimal;
+}
+
+.rich-text-content a {
+  color: #a5b4fc;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rich-text-content blockquote {
+  border-left: 3px solid rgba(129, 140, 248, 0.6);
+  color: rgba(255, 255, 255, 0.75);
+  padding-left: 0.9rem;
+}
+
+.rich-text-content hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  margin: 1rem 0;
+}
+
+.rich-text-content code,
+.rich-text-content pre {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.rich-text-content code {
+  padding: 0.1rem 0.35rem;
+}
+
+.rich-text-content pre {
+  overflow-x: auto;
+  padding: 0.75rem;
+}
+
+.rich-text-content img,
+.rich-text-content video {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  display: block;
+  margin: 0.75rem 0;
+  max-height: 18rem;
+  max-width: 100%;
+  object-fit: contain;
 }

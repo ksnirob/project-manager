@@ -1,10 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, MoreVertical, Calendar, DollarSign, Edit, Trash2, Folder, ArrowRight, Eye } from "lucide-react";
+import {
+  Plus,
+  MoreVertical,
+  Calendar,
+  DollarSign,
+  Edit,
+  Trash2,
+  Folder,
+  ArrowRight,
+  Eye,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Link2,
+  Image as ImageIcon,
+  Paperclip,
+  Heading2,
+  Heading3,
+  Pilcrow,
+  Minus,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,12 +36,32 @@ import { createProject, updateProject, deleteProject } from "@/lib/actions";
 import type { Project, Client, ProjectStatus } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
+type StatusFilter = "all" | ProjectStatus;
 const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
   { value: "all", label: "All" },
   { value: "weekly", label: "Week" },
   { value: "monthly", label: "Month" },
   { value: "yearly", label: "Year" },
 ];
+const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All Status" },
+  { value: "PLANNING", label: "Planning" },
+  { value: "ACTIVE", label: "Active" },
+  { value: "ON_HOLD", label: "On Hold" },
+  { value: "COMPLETED", label: "Completed" },
+  { value: "CANCELLED", label: "Cancelled" },
+];
+const projectStatusFilterStorageKey = "project-manager:projects:status-filter";
+
+const isStatusFilter = (value: string | null): value is StatusFilter =>
+  statusFilterOptions.some((option) => option.value === value);
+
+const getStoredStatusFilter = (): StatusFilter => {
+  if (typeof window === "undefined") return "all";
+
+  const storedValue = window.localStorage.getItem(projectStatusFilterStorageKey);
+  return isStatusFilter(storedValue) ? storedValue : "all";
+};
 
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
   ACTIVE: { bg: "bg-emerald-500/15", text: "text-emerald-400", border: "border-emerald-500/20" },
@@ -45,6 +89,388 @@ const projectTypes = [
 
 type ProjectWithClient = Project & { client: Client };
 
+const allowedRichTextTags = new Set([
+  "a",
+  "b",
+  "blockquote",
+  "br",
+  "code",
+  "div",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "hr",
+  "i",
+  "img",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "s",
+  "span",
+  "strong",
+  "u",
+  "ul",
+  "video",
+]);
+
+const isSafeRichTextUrl = (value: string, allowDocumentData = false) => {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.startsWith("https://") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("mailto:") ||
+    normalized.startsWith("tel:") ||
+    normalized.startsWith("data:image/") ||
+    normalized.startsWith("data:video/") ||
+    (allowDocumentData && normalized.startsWith("data:application/"))
+  );
+};
+
+const isAutoLinkableText = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  return normalized.startsWith("https://") || normalized.startsWith("www.");
+};
+
+const isPreviouslyAutoLinkedPlainText = (href: string, text: string) => {
+  const trimmedText = text.trim();
+  const normalizedHref = href.trim().toLowerCase();
+  const normalizedText = trimmedText.toLowerCase();
+
+  return (
+    trimmedText.length > 0 &&
+    !isAutoLinkableText(trimmedText) &&
+    (normalizedHref === `https://${normalizedText}` ||
+      normalizedHref === `mailto:${normalizedText}`)
+  );
+};
+
+const sanitizeRichTextHtml = (html: string) => {
+  if (!html.trim()) return "";
+  if (typeof window === "undefined") return html;
+
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const wrapper = document.createElement("div");
+
+  const sanitizeNode = (node: Node, parentTagName?: string): Node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent || "";
+      return parentTagName === "a" ? document.createTextNode(text) : linkifyTextNode(text);
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return document.createDocumentFragment();
+    }
+
+    const element = node as HTMLElement;
+    const tagName = element.tagName.toLowerCase();
+
+    if (!allowedRichTextTags.has(tagName)) {
+      const fragment = document.createDocumentFragment();
+      element.childNodes.forEach((child) => fragment.appendChild(sanitizeNode(child, tagName)));
+      return fragment;
+    }
+
+    const cleanElement = document.createElement(tagName);
+
+    if (tagName === "a") {
+      const href = element.getAttribute("href") || "";
+      const text = element.textContent || "";
+      if (isPreviouslyAutoLinkedPlainText(href, text)) {
+        const fragment = document.createDocumentFragment();
+        element.childNodes.forEach((child) => fragment.appendChild(sanitizeNode(child)));
+        return fragment;
+      }
+      if (isSafeRichTextUrl(href, true)) {
+        cleanElement.setAttribute("href", href);
+        cleanElement.setAttribute("target", "_blank");
+        cleanElement.setAttribute("rel", "noreferrer");
+      }
+    }
+
+    if (tagName === "img" || tagName === "video") {
+      const src = element.getAttribute("src") || "";
+      if (isSafeRichTextUrl(src)) {
+        cleanElement.setAttribute("src", src);
+      }
+      if (tagName === "img") {
+        cleanElement.setAttribute("alt", element.getAttribute("alt") || "Project file media");
+        cleanElement.setAttribute("loading", "lazy");
+      }
+      if (tagName === "video") {
+        cleanElement.setAttribute("controls", "");
+      }
+    }
+
+    element.childNodes.forEach((child) => cleanElement.appendChild(sanitizeNode(child, tagName)));
+    return cleanElement;
+  };
+
+  parsed.body.firstElementChild?.childNodes.forEach((child) => wrapper.appendChild(sanitizeNode(child)));
+  return wrapper.innerHTML;
+};
+
+const isRichTextEmpty = (html: string) => {
+  if (!html.trim()) return true;
+  if (typeof window === "undefined") {
+    return html.replace(/<[^>]*>/g, "").trim().length === 0;
+  }
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+  return (parsed.body.textContent || "").trim().length === 0 && parsed.body.querySelector("img,video") === null;
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const linkableTextPattern = /\b((?:https:\/\/|www\.)[^\s<]+)/gi;
+const trailingUrlPunctuationPattern = /[),.;:!?]+$/;
+
+const getHrefFromTextUrl = (value: string) => {
+  if (/^https:\/\//i.test(value)) return value;
+  return `https://${value}`;
+};
+
+const linkifyTextNode = (value: string) => {
+  const fragment = document.createDocumentFragment();
+  let lastIndex = 0;
+
+  value.replace(linkableTextPattern, (match, _url, offset: number) => {
+    if (offset > lastIndex) {
+      fragment.appendChild(document.createTextNode(value.slice(lastIndex, offset)));
+    }
+
+    const trailing = match.match(trailingUrlPunctuationPattern)?.[0] || "";
+    const urlText = trailing ? match.slice(0, -trailing.length) : match;
+    const link = document.createElement("a");
+    link.href = getHrefFromTextUrl(urlText);
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = urlText;
+    fragment.appendChild(link);
+
+    if (trailing) {
+      fragment.appendChild(document.createTextNode(trailing));
+    }
+
+    lastIndex = offset + match.length;
+    return match;
+  });
+
+  if (lastIndex < value.length) {
+    fragment.appendChild(document.createTextNode(value.slice(lastIndex)));
+  }
+
+  return fragment;
+};
+
+function ProjectFilesEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const syncContent = () => {
+    const sanitized = sanitizeRichTextHtml(editorRef.current?.innerHTML || "");
+    onChange(sanitized);
+  };
+
+  useEffect(() => {
+    const sanitizedValue = sanitizeRichTextHtml(value);
+    if (editorRef.current && editorRef.current.innerHTML !== sanitizedValue) {
+      editorRef.current.innerHTML = sanitizedValue;
+    }
+  }, [value]);
+
+  const runCommand = (command: string, commandValue?: string) => {
+    editorRef.current?.focus();
+    document.execCommand(command, false, commandValue);
+    syncContent();
+  };
+
+  const insertHtml = (html: string) => {
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false, sanitizeRichTextHtml(html));
+    syncContent();
+  };
+
+  const insertLink = () => {
+    const href = window.prompt("Paste a link");
+    if (!href || !isSafeRichTextUrl(href, true)) return;
+    const label = window.getSelection()?.toString() || href;
+    insertHtml(`<a href="${escapeHtml(href)}">${escapeHtml(label)}</a>`);
+  };
+
+  const insertMediaUrl = () => {
+    const src = window.prompt("Paste an image, video, or file URL");
+    if (!src || !isSafeRichTextUrl(src, true)) return;
+
+    if (/\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i.test(src)) {
+      insertHtml(`<p><img src="${escapeHtml(src)}" alt="Project file media"></p>`);
+      return;
+    }
+
+    if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(src)) {
+      insertHtml(`<p><video controls src="${escapeHtml(src)}"></video></p>`);
+      return;
+    }
+
+    insertHtml(`<p><a href="${escapeHtml(src)}">${escapeHtml(src)}</a></p>`);
+  };
+
+  const attachFile = (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      alert("Please attach files up to 8MB here, or insert a shared link for larger media.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      const fileName = escapeHtml(file.name);
+
+      if (file.type.startsWith("image/")) {
+        insertHtml(`<p><img src="${dataUrl}" alt="${fileName}"></p>`);
+        return;
+      }
+
+      if (file.type.startsWith("video/")) {
+        insertHtml(`<p><video controls src="${dataUrl}"></video></p>`);
+        return;
+      }
+
+      insertHtml(`<p><a href="${dataUrl}">${fileName}</a></p>`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toolbarButtonClass =
+    "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/65 transition-colors hover:bg-white/10 hover:text-white";
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+      <input type="hidden" name="projectFilesLink" value={value} readOnly />
+      <div className="flex flex-wrap items-center gap-1 border-b border-white/10 bg-black/10 p-2">
+        <button type="button" title="Paragraph" aria-label="Paragraph" onClick={() => runCommand("formatBlock", "p")} className={toolbarButtonClass}>
+          <Pilcrow size={16} />
+        </button>
+        <button type="button" title="Heading 2" aria-label="Heading 2" onClick={() => runCommand("formatBlock", "h2")} className={toolbarButtonClass}>
+          <Heading2 size={16} />
+        </button>
+        <button type="button" title="Heading 3" aria-label="Heading 3" onClick={() => runCommand("formatBlock", "h3")} className={toolbarButtonClass}>
+          <Heading3 size={16} />
+        </button>
+        <span className="mx-1 h-6 w-px bg-white/10" />
+        <button type="button" title="Bold" aria-label="Bold" onClick={() => runCommand("bold")} className={toolbarButtonClass}>
+          <Bold size={16} />
+        </button>
+        <button type="button" title="Italic" aria-label="Italic" onClick={() => runCommand("italic")} className={toolbarButtonClass}>
+          <Italic size={16} />
+        </button>
+        <button type="button" title="Underline" aria-label="Underline" onClick={() => runCommand("underline")} className={toolbarButtonClass}>
+          <Underline size={16} />
+        </button>
+        <span className="mx-1 h-6 w-px bg-white/10" />
+        <button type="button" title="Bulleted list" aria-label="Bulleted list" onClick={() => runCommand("insertUnorderedList")} className={toolbarButtonClass}>
+          <List size={16} />
+        </button>
+        <button type="button" title="Numbered list" aria-label="Numbered list" onClick={() => runCommand("insertOrderedList")} className={toolbarButtonClass}>
+          <ListOrdered size={16} />
+        </button>
+        <button type="button" title="Link" aria-label="Link" onClick={insertLink} className={toolbarButtonClass}>
+          <Link2 size={16} />
+        </button>
+        <button type="button" title="Media URL" aria-label="Media URL" onClick={insertMediaUrl} className={toolbarButtonClass}>
+          <ImageIcon size={16} />
+        </button>
+        <button type="button" title="Horizontal rule" aria-label="Horizontal rule" onClick={() => runCommand("insertHorizontalRule")} className={toolbarButtonClass}>
+          <Minus size={16} />
+        </button>
+        <button type="button" title="Attach file" aria-label="Attach file" onClick={() => fileInputRef.current?.click()} className={toolbarButtonClass}>
+          <Paperclip size={16} />
+        </button>
+        <span className="mx-1 h-6 w-px bg-white/10" />
+        <button type="button" title="Undo" aria-label="Undo" onClick={() => runCommand("undo")} className={toolbarButtonClass}>
+          <Undo2 size={16} />
+        </button>
+        <button type="button" title="Redo" aria-label="Redo" onClick={() => runCommand("redo")} className={toolbarButtonClass}>
+          <Redo2 size={16} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) attachFile(file);
+            event.target.value = "";
+          }}
+        />
+      </div>
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        data-empty={isRichTextEmpty(value)}
+        data-placeholder="Add headings, notes, links, lists, and media files..."
+        onInput={syncContent}
+        onBlur={syncContent}
+        className="rich-text-editor rich-text-content min-h-44 max-h-72 overflow-y-auto px-4 py-3 text-sm text-white/90 outline-none"
+      />
+    </div>
+  );
+}
+
+function RichTextViewer({ html }: { html: string | null }) {
+  const sanitized = sanitizeRichTextHtml(html || "");
+
+  if (isRichTextEmpty(sanitized)) {
+    return <p className="text-white/90">-</p>;
+  }
+
+  return (
+    <div
+      className="rich-text-content text-white/90"
+      dangerouslySetInnerHTML={{ __html: sanitized }}
+    />
+  );
+}
+
+function CredentialUrlValue({ value }: { value: string | null }) {
+  if (!value) {
+    return <p className="text-white/90">-</p>;
+  }
+
+  const href = value.toLowerCase().startsWith("www.") ? `https://${value}` : value;
+  const isClickable = /^https?:\/\//i.test(href);
+
+  if (!isClickable) {
+    return <p className="text-white/90 break-all">{value}</p>;
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="block text-indigo-200 hover:text-indigo-100 underline underline-offset-4 break-all transition-colors"
+    >
+      {value}
+    </a>
+  );
+}
+
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithClient[]>([]);
@@ -57,6 +483,8 @@ export default function ProjectsPage() {
   const [includeCredentials, setIncludeCredentials] = useState(false);
   const [viewingProject, setViewingProject] = useState<ProjectWithClient | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(getStoredStatusFilter);
+  const [projectFilesContent, setProjectFilesContent] = useState("");
 
   const fetchData = async () => {
     try {
@@ -108,6 +536,7 @@ export default function ProjectsPage() {
       const value = formData.get(field)?.toString().trim();
       return value ? value : null;
     };
+    const richProjectFiles = sanitizeRichTextHtml(projectFilesContent);
 
     const data = {
       title: formData.get("title") as string,
@@ -124,7 +553,7 @@ export default function ProjectsPage() {
       adminUrl: hasProjectCredentials ? getOptionalField("adminUrl") : null,
       adminUsername: hasProjectCredentials ? getOptionalField("adminUsername") : null,
       adminPassword: hasProjectCredentials ? getOptionalField("adminPassword") : null,
-      projectFilesLink: hasProjectCredentials ? getOptionalField("projectFilesLink") : null,
+      projectFilesLink: hasProjectCredentials && !isRichTextEmpty(richProjectFiles) ? richProjectFiles : null,
     };
 
     try {
@@ -153,6 +582,7 @@ export default function ProjectsPage() {
 
   const handleEdit = (project: ProjectWithClient) => {
     setEditingProject(project);
+    setProjectFilesContent(project.projectFilesLink || "");
     setIncludeCredentials(
       Boolean(
         project.hasProjectCredentials ||
@@ -180,6 +610,7 @@ export default function ProjectsPage() {
 
   const openCreateModal = () => {
     setEditingProject(null);
+    setProjectFilesContent("");
     setIncludeCredentials(false);
     setIsModalOpen(true);
   };
@@ -187,6 +618,7 @@ export default function ProjectsPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingProject(null);
+    setProjectFilesContent("");
     setIncludeCredentials(false);
   };
 
@@ -226,6 +658,7 @@ export default function ProjectsPage() {
 
   const filteredProjects = projects
     .filter((project) => isInTimeRange(project.createdAt))
+    .filter((project) => statusFilter === "all" || project.status === statusFilter)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
@@ -235,14 +668,30 @@ export default function ProjectsPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Projects</h1>
           <p className="text-white/50">Manage and track all your projects in one place.</p>
         </div>
-        <div className="flex w-full md:w-auto flex-col md:flex-row gap-3">
-          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1">
+        <div className="flex w-full md:w-auto flex-col md:flex-row md:items-center gap-3">
+          <select
+            aria-label="Filter projects by status"
+            value={statusFilter}
+            onChange={(event) => {
+              const nextStatusFilter = event.target.value as StatusFilter;
+              setStatusFilter(nextStatusFilter);
+              window.localStorage.setItem(projectStatusFilterStorageKey, nextStatusFilter);
+            }}
+            className="h-11 !w-full md:!w-48 shrink-0 rounded-xl border border-white/10 bg-white/5 !px-4 !py-0 text-sm leading-none text-white/75"
+          >
+            {statusFilterOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1 md:min-w-64 shrink-0">
             {timeRangeOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => setTimeRange(option.value)}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                className={`whitespace-nowrap px-3 py-1.5 text-xs rounded-lg transition-colors ${
                   timeRange === option.value
                     ? "bg-indigo-500/30 text-indigo-100"
                     : "text-white/60 hover:text-white hover:bg-white/10"
@@ -252,7 +701,7 @@ export default function ProjectsPage() {
               </button>
             ))}
           </div>
-          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto">
+          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto md:shrink-0 whitespace-nowrap">
             <Plus className="w-5 h-5" />
             New Project
           </AnimatedButton>
@@ -281,6 +730,7 @@ export default function ProjectsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project, i) => {
             const statusStyle = getStatusStyle(project.status);
+            const isCompleted = project.status === "COMPLETED";
             return (
               <motion.div
                 key={project.id}
@@ -288,16 +738,36 @@ export default function ProjectsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.4, type: "spring" }}
               >
-                <FloatingCard className="h-full flex flex-col group relative">
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-[50px] group-hover:bg-indigo-500/10 transition-colors" />
+                <FloatingCard
+                  className={`project-card h-full flex flex-col group relative transition-all duration-300 ${
+                    isCompleted
+                      ? "completed-project-card !bg-zinc-950/45 !border-white/[0.04] grayscale saturate-0 brightness-75 contrast-75"
+                      : ""
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] transition-colors ${
+                      isCompleted
+                        ? "bg-white/[0.03]"
+                        : "bg-indigo-500/5 group-hover:bg-indigo-500/10"
+                    }`}
+                  />
+
+                  <div className={isCompleted ? "completed-project-overlay absolute inset-0 z-[1] bg-black/25 pointer-events-none" : ""} />
 
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-pink-500/10 text-pink-400">
+                        <div className={`p-2 rounded-lg ${isCompleted ? "bg-white/[0.04] text-white/25" : "bg-pink-500/10 text-pink-400"}`}>
                           <Folder size={18} />
                         </div>
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                            isCompleted
+                              ? "border-white/10 bg-white/[0.04] text-white/35"
+                              : `${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`
+                          }`}
+                        >
                           {project.status.replace("_", " ")}
                         </span>
                       </div>
@@ -328,17 +798,17 @@ export default function ProjectsPage() {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold mb-1">{project.title}</h3>
+                      <h3 className={`text-xl font-semibold mb-1 ${isCompleted ? "text-white/45" : ""}`}>{project.title}</h3>
                       {project.type && (
-                        <p className="text-sm text-indigo-400 mb-1">{project.type}</p>
+                        <p className={`text-sm mb-1 ${isCompleted ? "text-white/30" : "text-indigo-400"}`}>{project.type}</p>
                       )}
-                      <p className="text-sm text-white/50 mb-5">{project.client.name}</p>
+                      <p className={`text-sm mb-5 ${isCompleted ? "text-white/25" : "text-white/50"}`}>{project.client.name}</p>
                     </div>
 
-                    <div className="space-y-3 border-t border-white/10 pt-4">
+                    <div className={`space-y-3 border-t pt-4 ${isCompleted ? "border-white/[0.04]" : "border-white/10"}`}>
                       <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-white/60">
-                          <Calendar size={16} className="text-indigo-400/60" />
+                        <div className={`flex items-center gap-2 ${isCompleted ? "text-white/30" : "text-white/60"}`}>
+                          <Calendar size={16} className={isCompleted ? "text-white/25" : "text-indigo-400/60"} />
                           <span>
                             {project.deadline
                               ? new Date(project.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -346,21 +816,23 @@ export default function ProjectsPage() {
                           </span>
                         </div>
                         {project.budget && (
-                          <div className="flex items-center gap-2 text-white/60">
-                            <DollarSign size={16} className="text-emerald-400/60" />
+                          <div className={`flex items-center gap-2 ${isCompleted ? "text-white/30" : "text-white/60"}`}>
+                            <DollarSign size={16} className={isCompleted ? "text-white/25" : "text-emerald-400/60"} />
                             <span>${project.budget.toLocaleString()}</span>
                           </div>
                         )}
                       </div>
 
-                      <div className="text-xs text-white/45">
+                      <div className={`text-xs ${isCompleted ? "text-white/20" : "text-white/45"}`}>
                         Created {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </div>
 
                       <div className="relative">
-                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                        <div className={`w-full rounded-full h-2 overflow-hidden ${isCompleted ? "bg-white/[0.03]" : "bg-white/5"}`}>
                           <div
-                            className={`h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ${statusProgress[project.status]}`}
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isCompleted ? "bg-white/20" : "bg-gradient-to-r from-indigo-500 to-purple-500"
+                            } ${statusProgress[project.status]}`}
                           />
                         </div>
                       </div>
@@ -369,14 +841,22 @@ export default function ProjectsPage() {
                     <div className="mt-5 grid grid-cols-2 gap-2">
                       <Link
                         href={`/tasks?projectId=${project.id}`}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/60 hover:text-white transition-colors"
+                        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
+                          isCompleted
+                            ? "bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/45"
+                            : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                        }`}
                       >
                         View Tasks <ArrowRight size={14} />
                       </Link>
                       <button
                         type="button"
                         onClick={() => openViewProjectModal(project)}
-                        className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white/60 hover:text-white transition-colors"
+                        className={`cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
+                          isCompleted
+                            ? "bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/45"
+                            : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                        }`}
                       >
                         View Project <Eye size={14} />
                       </button>
@@ -562,13 +1042,7 @@ export default function ProjectsPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-white/80">Project Files Link</label>
-                  <input
-                    type="url"
-                    name="projectFilesLink"
-                    placeholder="https://drive.google.com/..."
-                    defaultValue={editingProject?.projectFilesLink || ""}
-                    className="w-full"
-                  />
+                  <ProjectFilesEditor value={projectFilesContent} onChange={setProjectFilesContent} />
                 </div>
               </div>
             )}
@@ -659,15 +1133,11 @@ export default function ProjectsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-white/50 mb-1">Project URL</p>
-                    <p className="text-white/90 break-all">{viewingProject.projectUrl || "-"}</p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-white/50 mb-1">Files Link</p>
-                    <p className="text-white/90 break-all">{viewingProject.projectFilesLink || "-"}</p>
+                    <CredentialUrlValue value={viewingProject.projectUrl} />
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-white/50 mb-1">Cpanel URL</p>
-                    <p className="text-white/90 break-all">{viewingProject.cpanelUrl || "-"}</p>
+                    <CredentialUrlValue value={viewingProject.cpanelUrl} />
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-white/50 mb-1">Cpanel Username</p>
@@ -689,6 +1159,10 @@ export default function ProjectsPage() {
                     <p className="text-white/50 mb-1">Admin Password</p>
                     <p className="text-white/90 break-all">{viewingProject.adminPassword || "-"}</p>
                   </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <p className="text-white/50 mb-2">Project Files</p>
+                  <RichTextViewer html={viewingProject.projectFilesLink} />
                 </div>
               </div>
             )}

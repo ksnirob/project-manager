@@ -93,7 +93,7 @@ model Project {
   adminUrl    String?
   adminUsername String?
   adminPassword String?
-  projectFilesLink String?
+  projectFilesLink String? @db.LongText
   status      ProjectStatus @default(PLANNING)
   deadline    DateTime?
   budget      Float?

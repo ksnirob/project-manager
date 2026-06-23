@@ -27,10 +27,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="light" suppressHydrationWarning>
       <body
         className={`${plusJakarta.variable} ${spaceGrotesk.variable} font-sans antialiased min-h-screen relative overflow-x-hidden`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const storedTheme = localStorage.getItem("project-manager:theme");
+                const theme = storedTheme === "dark" ? "dark" : "light";
+                document.documentElement.classList.remove("light", "dark");
+                document.documentElement.classList.add(theme);
+              } catch (_) {}
+            `,
+          }}
+        />
         <div className="absolute inset-0 bg-space-gradient -z-10" />
 
         <AppShell>

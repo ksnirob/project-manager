@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { LayoutDashboard, Users, FolderKanban, CheckSquare, FileText, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Users, FolderKanban, CheckSquare, FileText, BarChart3, LogOut, Menu, X, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/app/actions/auth";
 
@@ -14,12 +14,24 @@ const navItems = [
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Invoices", href: "/invoices", icon: FileText },
+  { name: "Reports", href: "/reports", icon: BarChart3 },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [admin, setAdmin] = useState<{ name: string | null; email: string } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    if (typeof window === "undefined") return "light";
+    return window.localStorage.getItem("project-manager:theme") === "dark" ? "dark" : "light";
+  });
+
+  const applyTheme = (nextTheme: "light" | "dark") => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(nextTheme);
+    window.localStorage.setItem("project-manager:theme", nextTheme);
+    setTheme(nextTheme);
+  };
 
   useEffect(() => {
     const loadAdmin = async () => {
@@ -41,8 +53,11 @@ export function Sidebar() {
   }, []);
 
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
+    const storedTheme = window.localStorage.getItem("project-manager:theme");
+    const nextTheme = storedTheme === "dark" ? "dark" : "light";
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(nextTheme);
+  }, []);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;
@@ -96,7 +111,7 @@ export function Sidebar() {
             const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
 
             return (
-              <Link key={item.name} href={item.href} className="block relative">
+              <Link key={item.name} href={item.href} className="block relative" onClick={() => setIsMobileMenuOpen(false)}>
                 <motion.div
                   whileTap={{ scale: 0.98 }}
                   className={cn(
@@ -112,6 +127,7 @@ export function Sidebar() {
 
                 {isActive && (
                   <motion.div
+                    data-active-nav="true"
                     layoutId="activeTab"
                     className="absolute inset-0 bg-white/10 border border-white/20 rounded-2xl z-0 pointer-events-none"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -133,6 +149,14 @@ export function Sidebar() {
             </div>
           </div>
           <form action={adminLogout} className="mt-4 px-2">
+            <button
+              type="button"
+              onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
+              className="mb-3 w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </button>
             <button
               type="submit"
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
@@ -174,6 +198,7 @@ export function Sidebar() {
 
                 {isActive && (
                   <motion.div
+                    data-active-nav="true"
                     layoutId="activeTab"
                     className="absolute inset-0 bg-white/10 border border-white/20 rounded-2xl z-0 pointer-events-none"
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -195,6 +220,14 @@ export function Sidebar() {
             </div>
           </div>
           <form action={adminLogout} className="mt-4 px-2">
+            <button
+              type="button"
+              onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
+              className="mb-3 w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </button>
             <button
               type="submit"
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"

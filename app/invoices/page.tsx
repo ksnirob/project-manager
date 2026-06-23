@@ -219,10 +219,6 @@ export default function InvoicesPage() {
     doc.setFontSize(28);
     doc.text("INVOICE", 48, 74);
 
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text("Anti-Gravity Manager", 48, 98);
-
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text(invoice.invoiceNo, pageWidth - 48, 74, { align: "right" });
