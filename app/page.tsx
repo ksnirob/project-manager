@@ -16,6 +16,23 @@ import {
 import { motion } from "framer-motion";
 import Link from "next/link";
 
+const chartGridColor = "var(--chart-grid)";
+const chartAxisColor = "var(--chart-axis)";
+const chartTooltipStyle = {
+  backgroundColor: "var(--chart-tooltip-bg)",
+  border: "1px solid var(--chart-tooltip-border)",
+  borderRadius: 12,
+  boxShadow: "0 16px 34px var(--chart-tooltip-shadow)",
+  color: "var(--chart-tooltip-text)",
+};
+const chartTooltipLabelStyle = {
+  color: "var(--chart-tooltip-label)",
+  fontWeight: 600,
+};
+const chartTooltipItemStyle = {
+  color: "var(--chart-tooltip-text)",
+};
+
 interface RecentProject {
   id: string;
   title: string;
@@ -150,12 +167,14 @@ export default function Dashboard() {
                         <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" axisLine={false} tickLine={false} />
-                    <YAxis stroke="rgba(255,255,255,0.4)" axisLine={false} tickLine={false} tickFormatter={(val) => `$${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
+                    <XAxis dataKey="name" stroke={chartAxisColor} axisLine={false} tickLine={false} />
+                    <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={(val) => `$${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: "rgba(15, 15, 15, 0.95)", borderColor: "rgba(255,255,255,0.1)", borderRadius: "12px", boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)" }}
-                      itemStyle={{ color: "#fff" }}
+                      contentStyle={chartTooltipStyle}
+                      labelStyle={chartTooltipLabelStyle}
+                      itemStyle={chartTooltipItemStyle}
+                      cursor={{ stroke: "var(--chart-cursor-stroke)", strokeWidth: 1 }}
                       formatter={(value) => [`$${Number(value).toLocaleString()}`, "Revenue"]}
                     />
                     <Area

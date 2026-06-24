@@ -85,6 +85,22 @@ const invoiceStatusLabels: Record<InvoiceItem["status"], string> = {
 };
 
 const chartColors = ["#6366f1", "#ec4899", "#22c55e", "#f59e0b", "#ef4444"];
+const chartGridColor = "var(--chart-grid)";
+const chartAxisColor = "var(--chart-axis)";
+const chartTooltipStyle = {
+  backgroundColor: "var(--chart-tooltip-bg)",
+  border: "1px solid var(--chart-tooltip-border)",
+  borderRadius: 12,
+  boxShadow: "0 16px 34px var(--chart-tooltip-shadow)",
+  color: "var(--chart-tooltip-text)",
+};
+const chartTooltipLabelStyle = {
+  color: "var(--chart-tooltip-label)",
+  fontWeight: 600,
+};
+const chartTooltipItemStyle = {
+  color: "var(--chart-tooltip-text)",
+};
 type DateRangeFilter = "all" | "this_month" | "last_30" | "this_year";
 type ProjectStatusFilter = "all" | ProjectItem["status"];
 type TaskStatusFilter = "all" | TaskItem["status"];
@@ -385,11 +401,14 @@ export default function ReportsPage() {
             ) : revenueTrendData.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueTrendData} margin={{ left: -20, right: 12, top: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.45)" axisLine={false} tickLine={false} />
-                  <YAxis stroke="rgba(255,255,255,0.45)" axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
+                  <XAxis dataKey="name" stroke={chartAxisColor} axisLine={false} tickLine={false} />
+                  <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "rgba(15,15,15,0.96)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }}
+                    contentStyle={chartTooltipStyle}
+                    labelStyle={chartTooltipLabelStyle}
+                    itemStyle={chartTooltipItemStyle}
+                    cursor={{ stroke: "var(--chart-cursor-stroke)", strokeWidth: 1 }}
                     formatter={(value) => [`$${Number(value).toLocaleString()}`, "Revenue"]}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#818cf8" strokeWidth={3} fill="#6366f1" fillOpacity={0.18} />
@@ -495,16 +514,21 @@ function StatusPanel({
                   <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: "rgba(15,15,15,0.96)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
+              <Tooltip contentStyle={chartTooltipStyle} labelStyle={chartTooltipLabelStyle} itemStyle={chartTooltipItemStyle} />
             </PieChart>
           </ResponsiveContainer>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ left: -24, right: 8, top: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="name" stroke="rgba(255,255,255,0.45)" axisLine={false} tickLine={false} interval={0} tick={{ fontSize: 10 }} />
-              <YAxis allowDecimals={false} stroke="rgba(255,255,255,0.45)" axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ backgroundColor: "rgba(15,15,15,0.96)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
+              <XAxis dataKey="name" stroke={chartAxisColor} axisLine={false} tickLine={false} interval={0} tick={{ fontSize: 10 }} />
+              <YAxis allowDecimals={false} stroke={chartAxisColor} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={chartTooltipStyle}
+                labelStyle={chartTooltipLabelStyle}
+                itemStyle={chartTooltipItemStyle}
+                cursor={{ fill: "var(--chart-cursor-fill)" }}
+              />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {data.map((entry, index) => (
                   <Cell key={entry.name} fill={chartColors[index % chartColors.length]} />

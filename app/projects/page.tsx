@@ -663,12 +663,12 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight mb-2">Projects</h1>
           <p className="text-white/50">Manage and track all your projects in one place.</p>
         </div>
-        <div className="flex w-full md:w-auto flex-col md:flex-row md:items-center gap-3">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:w-auto xl:items-center">
           <select
             aria-label="Filter projects by status"
             value={statusFilter}
@@ -677,7 +677,7 @@ export default function ProjectsPage() {
               setStatusFilter(nextStatusFilter);
               window.localStorage.setItem(projectStatusFilterStorageKey, nextStatusFilter);
             }}
-            className="h-11 !w-full md:!w-48 shrink-0 rounded-xl border border-white/10 bg-white/5 !px-4 !py-0 text-sm leading-none text-white/75"
+            className="h-11 !w-full xl:!w-48 shrink-0 rounded-xl border border-white/10 bg-white/5 !px-4 !py-0 text-sm leading-none text-white/75"
           >
             {statusFilterOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -685,7 +685,7 @@ export default function ProjectsPage() {
               </option>
             ))}
           </select>
-          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1 md:min-w-64 shrink-0">
+          <div className="grid grid-cols-4 rounded-xl border border-white/10 bg-white/5 p-1 xl:min-w-64 shrink-0">
             {timeRangeOptions.map((option) => (
               <button
                 key={option.value}
@@ -701,7 +701,7 @@ export default function ProjectsPage() {
               </button>
             ))}
           </div>
-          <AnimatedButton onClick={openCreateModal} className="w-full md:w-auto md:shrink-0 whitespace-nowrap">
+          <AnimatedButton onClick={openCreateModal} className="w-full whitespace-nowrap sm:col-span-2 xl:col-span-1 xl:w-auto xl:shrink-0">
             <Plus className="w-5 h-5" />
             New Project
           </AnimatedButton>
@@ -709,7 +709,7 @@ export default function ProjectsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-56 bg-white/5 rounded-2xl animate-pulse" />
           ))}
@@ -727,7 +727,7 @@ export default function ProjectsPage() {
           </AnimatedButton>
         </FloatingCard>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
           {filteredProjects.map((project, i) => {
             const statusStyle = getStatusStyle(project.status);
             const isCompleted = project.status === "COMPLETED";
@@ -740,32 +740,26 @@ export default function ProjectsPage() {
               >
                 <FloatingCard
                   className={`project-card h-full flex flex-col group relative transition-all duration-300 ${
-                    isCompleted
-                      ? "completed-project-card !bg-zinc-950/45 !border-white/[0.04] grayscale saturate-0 brightness-75 contrast-75"
-                      : ""
+                    isCompleted ? "completed-project-card" : ""
                   }`}
                 >
                   <div
                     className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[50px] transition-colors ${
-                      isCompleted
-                        ? "bg-white/[0.03]"
-                        : "bg-indigo-500/5 group-hover:bg-indigo-500/10"
+                      isCompleted ? "completed-project-glow" : "bg-indigo-500/5 group-hover:bg-indigo-500/10"
                     }`}
                   />
 
-                  <div className={isCompleted ? "completed-project-overlay absolute inset-0 z-[1] bg-black/25 pointer-events-none" : ""} />
+                  <div className={isCompleted ? "completed-project-overlay absolute inset-0 z-[1] pointer-events-none" : ""} />
 
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${isCompleted ? "bg-white/[0.04] text-white/25" : "bg-pink-500/10 text-pink-400"}`}>
+                        <div className={`p-2 rounded-lg ${isCompleted ? "completed-project-icon" : "bg-pink-500/10 text-pink-400"}`}>
                           <Folder size={18} />
                         </div>
                         <span
                           className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
-                            isCompleted
-                              ? "border-white/10 bg-white/[0.04] text-white/35"
-                              : `${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`
+                            isCompleted ? "completed-project-status" : `${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`
                           }`}
                         >
                           {project.status.replace("_", " ")}
@@ -774,7 +768,7 @@ export default function ProjectsPage() {
                       <div className="relative">
                         <button
                           onClick={() => setMenuOpen(menuOpen === project.id ? null : project.id)}
-                          className="text-white/40 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"
+                          className={`transition-colors p-1.5 rounded-lg ${isCompleted ? "completed-project-menu" : "text-white/40 hover:text-white hover:bg-white/10"}`}
                         >
                           <MoreVertical size={18} />
                         </button>
@@ -798,17 +792,17 @@ export default function ProjectsPage() {
                     </div>
 
                     <div className="flex-1">
-                      <h3 className={`text-xl font-semibold mb-1 ${isCompleted ? "text-white/45" : ""}`}>{project.title}</h3>
+                      <h3 className={`text-xl font-semibold mb-1 ${isCompleted ? "completed-project-title" : ""}`}>{project.title}</h3>
                       {project.type && (
-                        <p className={`text-sm mb-1 ${isCompleted ? "text-white/30" : "text-indigo-400"}`}>{project.type}</p>
+                        <p className={`text-sm mb-1 ${isCompleted ? "completed-project-type" : "text-indigo-400"}`}>{project.type}</p>
                       )}
-                      <p className={`text-sm mb-5 ${isCompleted ? "text-white/25" : "text-white/50"}`}>{project.client.name}</p>
+                      <p className={`text-sm mb-5 ${isCompleted ? "completed-project-client" : "text-white/50"}`}>{project.client.name}</p>
                     </div>
 
-                    <div className={`space-y-3 border-t pt-4 ${isCompleted ? "border-white/[0.04]" : "border-white/10"}`}>
+                    <div className={`space-y-3 border-t pt-4 ${isCompleted ? "completed-project-divider" : "border-white/10"}`}>
                       <div className="flex items-center justify-between text-sm">
-                        <div className={`flex items-center gap-2 ${isCompleted ? "text-white/30" : "text-white/60"}`}>
-                          <Calendar size={16} className={isCompleted ? "text-white/25" : "text-indigo-400/60"} />
+                        <div className={`flex items-center gap-2 ${isCompleted ? "completed-project-meta" : "text-white/60"}`}>
+                          <Calendar size={16} className={isCompleted ? "completed-project-meta-icon" : "text-indigo-400/60"} />
                           <span>
                             {project.deadline
                               ? new Date(project.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -816,22 +810,22 @@ export default function ProjectsPage() {
                           </span>
                         </div>
                         {project.budget && (
-                          <div className={`flex items-center gap-2 ${isCompleted ? "text-white/30" : "text-white/60"}`}>
-                            <DollarSign size={16} className={isCompleted ? "text-white/25" : "text-emerald-400/60"} />
+                          <div className={`flex items-center gap-2 ${isCompleted ? "completed-project-meta" : "text-white/60"}`}>
+                            <DollarSign size={16} className={isCompleted ? "completed-project-meta-icon" : "text-emerald-400/60"} />
                             <span>${project.budget.toLocaleString()}</span>
                           </div>
                         )}
                       </div>
 
-                      <div className={`text-xs ${isCompleted ? "text-white/20" : "text-white/45"}`}>
+                      <div className={`text-xs ${isCompleted ? "completed-project-created" : "text-white/45"}`}>
                         Created {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       </div>
 
                       <div className="relative">
-                        <div className={`w-full rounded-full h-2 overflow-hidden ${isCompleted ? "bg-white/[0.03]" : "bg-white/5"}`}>
+                        <div className={`w-full rounded-full h-2 overflow-hidden ${isCompleted ? "completed-project-progress-track" : "bg-white/5"}`}>
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              isCompleted ? "bg-white/20" : "bg-gradient-to-r from-indigo-500 to-purple-500"
+                              isCompleted ? "completed-project-progress-fill" : "bg-gradient-to-r from-indigo-500 to-purple-500"
                             } ${statusProgress[project.status]}`}
                           />
                         </div>
@@ -842,9 +836,7 @@ export default function ProjectsPage() {
                       <Link
                         href={`/tasks?projectId=${project.id}`}
                         className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
-                          isCompleted
-                            ? "bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/45"
-                            : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                          isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
                         View Tasks <ArrowRight size={14} />
@@ -853,9 +845,7 @@ export default function ProjectsPage() {
                         type="button"
                         onClick={() => openViewProjectModal(project)}
                         className={`cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
-                          isCompleted
-                            ? "bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-white/45"
-                            : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
+                          isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
                         View Project <Eye size={14} />

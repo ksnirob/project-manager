@@ -12,6 +12,15 @@
   --card-bg: rgba(255, 255, 255, 0.78);
   --card-border: rgba(15, 23, 42, 0.1);
   --card-hover: rgba(255, 255, 255, 0.95);
+  --chart-grid: rgba(100, 116, 139, 0.18);
+  --chart-axis: rgba(51, 65, 85, 0.62);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.96);
+  --chart-tooltip-border: rgba(99, 102, 241, 0.18);
+  --chart-tooltip-text: #1e293b;
+  --chart-tooltip-label: #0f172a;
+  --chart-tooltip-shadow: rgba(15, 23, 42, 0.16);
+  --chart-cursor-fill: rgba(99, 102, 241, 0.08);
+  --chart-cursor-stroke: rgba(99, 102, 241, 0.35);
 }
 
 .dark {
@@ -20,6 +29,15 @@
   --card-bg: rgba(255, 255, 255, 0.03);
   --card-border: rgba(255, 255, 255, 0.08);
   --card-hover: rgba(255, 255, 255, 0.06);
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-axis: rgba(255, 255, 255, 0.45);
+  --chart-tooltip-bg: rgba(15, 15, 15, 0.96);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.1);
+  --chart-tooltip-text: rgba(255, 255, 255, 0.88);
+  --chart-tooltip-label: rgba(255, 255, 255, 0.7);
+  --chart-tooltip-shadow: rgba(0, 0, 0, 0.5);
+  --chart-cursor-fill: rgba(255, 255, 255, 0.06);
+  --chart-cursor-stroke: rgba(129, 140, 248, 0.55);
 }
 
 * {
@@ -309,6 +327,78 @@ select option {
   box-shadow: 0 14px 28px rgba(79, 70, 229, 0.22) !important;
 }
 
+.light .bg-indigo-500\/30 {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.92), rgba(79, 70, 229, 0.86)) !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.2) !important;
+}
+
+.light .bg-indigo-500\/30.text-indigo-100 {
+  color: #fff !important;
+}
+
+.completed-project-card {
+  background: rgba(9, 9, 11, 0.45) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  filter: grayscale(1) saturate(0) brightness(0.75) contrast(0.75) !important;
+}
+
+.completed-project-overlay {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.completed-project-glow {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.completed-project-icon,
+.completed-project-status,
+.completed-project-progress-track,
+.completed-project-action {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.completed-project-icon,
+.completed-project-meta-icon {
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.completed-project-status {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.completed-project-menu,
+.completed-project-type,
+.completed-project-meta {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.completed-project-title {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.completed-project-client,
+.completed-project-created,
+.completed-project-action {
+  color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.completed-project-divider {
+  border-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+.completed-project-progress-fill {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.completed-project-action:hover,
+.completed-project-menu:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
 .light .project-card:not(.completed-project-card) {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.86)) !important;
   border-color: rgba(15, 23, 42, 0.12) !important;
@@ -316,20 +406,82 @@ select option {
 }
 
 .light .completed-project-card {
-  background: linear-gradient(145deg, rgba(226, 232, 240, 0.82), rgba(241, 245, 249, 0.72)) !important;
-  border-color: rgba(100, 116, 139, 0.24) !important;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06) !important;
-  filter: grayscale(1) saturate(0) brightness(0.96) contrast(0.86) !important;
+  background: linear-gradient(145deg, rgba(239, 246, 255, 0.92), rgba(226, 232, 240, 0.82)) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 18px 44px rgba(51, 65, 85, 0.11), 0 1px 0 rgba(255, 255, 255, 0.72) inset !important;
+  filter: none !important;
 }
 
 .light .completed-project-overlay {
-  background: rgba(255, 255, 255, 0.22) !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04), rgba(15, 23, 42, 0.03)) !important;
 }
 
-.light .completed-project-card .bg-white\/\[0\.03\],
-.light .completed-project-card .bg-white\/\[0\.04\],
-.light .completed-project-card .bg-white\/\[0\.06\] {
-  background-color: rgba(148, 163, 184, 0.14) !important;
+.light .completed-project-glow {
+  background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.light .completed-project-icon {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: rgba(79, 70, 229, 0.72) !important;
+}
+
+.light .completed-project-status {
+  background: rgba(99, 102, 241, 0.1) !important;
+  border-color: rgba(99, 102, 241, 0.22) !important;
+  color: rgba(67, 56, 202, 0.72) !important;
+}
+
+.light .completed-project-menu {
+  color: rgba(71, 85, 105, 0.64) !important;
+}
+
+.light .completed-project-menu:hover {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: rgba(51, 65, 85, 0.92) !important;
+}
+
+.light .completed-project-title {
+  color: rgba(30, 41, 59, 0.78) !important;
+}
+
+.light .completed-project-type {
+  color: rgba(99, 102, 241, 0.68) !important;
+}
+
+.light .completed-project-client,
+.light .completed-project-meta {
+  color: rgba(71, 85, 105, 0.66) !important;
+}
+
+.light .completed-project-meta-icon {
+  color: rgba(99, 102, 241, 0.5) !important;
+}
+
+.light .completed-project-created {
+  color: rgba(100, 116, 139, 0.56) !important;
+}
+
+.light .completed-project-divider {
+  border-color: rgba(100, 116, 139, 0.18) !important;
+}
+
+.light .completed-project-progress-track {
+  background: rgba(148, 163, 184, 0.22) !important;
+}
+
+.light .completed-project-progress-fill {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.52), rgba(139, 92, 246, 0.44)) !important;
+}
+
+.light .completed-project-action {
+  background: rgba(226, 232, 240, 0.72) !important;
+  color: rgba(71, 85, 105, 0.72) !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+}
+
+.light .completed-project-action:hover {
+  background: rgba(199, 210, 254, 0.48) !important;
+  color: rgba(67, 56, 202, 0.78) !important;
 }
 
 .light .rich-text-content h1,
