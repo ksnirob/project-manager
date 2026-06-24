@@ -832,23 +832,27 @@ export default function ProjectsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 grid grid-cols-2 gap-2">
+                    <div className="project-card-actions mt-5">
                       <Link
                         href={`/tasks?projectId=${project.id}`}
-                        className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
+                        className={`project-card-action-button flex items-center justify-center gap-2 w-full rounded-xl text-sm transition-colors ${
                           isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        View Tasks <ArrowRight size={14} />
+                        <span className="hidden xl:inline">View Tasks</span>
+                        <span className="inline xl:hidden">Tasks</span>
+                        <ArrowRight size={14} className="shrink-0" />
                       </Link>
                       <button
                         type="button"
                         onClick={() => openViewProjectModal(project)}
-                        className={`cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm transition-colors ${
+                        className={`project-card-action-button cursor-pointer flex items-center justify-center gap-2 w-full rounded-xl text-sm transition-colors ${
                           isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        View Project <Eye size={14} />
+                        <span className="hidden xl:inline">View Project</span>
+                        <span className="inline xl:hidden">Project</span>
+                        <Eye size={14} className="shrink-0" />
                       </button>
                     </div>
                   </div>
