@@ -6,6 +6,8 @@ const { requireAdmin, ADMIN_SESSION_COOKIE } = require("../middleware/auth");
 
 const authRouter = express.Router();
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const sessionCookieDomain =
+  process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".ksnirob.com" : undefined);
 
 authRouter.post("/login", async (req, res) => {
   try {
@@ -49,6 +51,7 @@ authRouter.post("/login", async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       maxAge: SESSION_MAX_AGE_SECONDS * 1000,
       path: "/",
+      domain: sessionCookieDomain,
     });
 
     return res.json({
@@ -73,6 +76,7 @@ authRouter.post("/logout", requireAdmin, async (req, res) => {
       path: "/",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
+      domain: sessionCookieDomain,
     });
     return res.json({ success: true });
   } catch (error) {

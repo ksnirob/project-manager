@@ -1,6 +1,8 @@
 const { prisma } = require("../lib/prisma");
 
 const ADMIN_SESSION_COOKIE = "pm_admin_session";
+const sessionCookieDomain =
+  process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".ksnirob.com" : undefined);
 
 async function requireAdmin(req, res, next) {
   try {
@@ -32,6 +34,7 @@ async function requireAdmin(req, res, next) {
         path: "/",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
         secure: process.env.NODE_ENV === "production",
+        domain: sessionCookieDomain,
       });
       return res.status(401).json({ error: "Unauthorized" });
     }
