@@ -10,6 +10,7 @@ import { Plus, GripVertical, Trash2, Edit, Calendar, Clock } from "lucide-react"
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
+import { apiFetch } from "@/lib/api";
 import type { Task, TaskStatus, TaskPriority, Project, Client } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -53,12 +54,12 @@ function KanbanBoardContent() {
   const fetchData = async () => {
     try {
       const tasksUrl = projectIdFilter
-        ? `/api/tasks?projectId=${encodeURIComponent(projectIdFilter)}`
-        : "/api/tasks";
+        ? `/tasks?projectId=${encodeURIComponent(projectIdFilter)}`
+        : "/tasks";
 
       const [tasksRes, projectsRes] = await Promise.all([
-        fetch(tasksUrl),
-        fetch("/api/projects"),
+        apiFetch(tasksUrl),
+        apiFetch("/projects"),
       ]);
 
       if (tasksRes.status === 401 || projectsRes.status === 401) {

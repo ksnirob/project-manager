@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { LayoutDashboard, Users, FolderKanban, CheckSquare, FileText, BarChart3, LogOut, Menu, X, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adminLogout } from "@/app/actions/auth";
+import { apiFetch } from "@/lib/api";
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -19,6 +19,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [admin, setAdmin] = useState<{ name: string | null; email: string } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -36,7 +37,7 @@ export function Sidebar() {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        const res = await apiFetch("/auth/me", { cache: "no-store" });
         if (!res.ok) {
           setAdmin(null);
           return;
@@ -51,6 +52,12 @@ export function Sidebar() {
 
     loadAdmin();
   }, []);
+
+  const handleLogout = async () => {
+    await apiFetch("/auth/logout", { method: "POST" }).catch(() => undefined);
+    router.replace("/login");
+    router.refresh();
+  };
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("project-manager:theme");
@@ -148,7 +155,7 @@ export function Sidebar() {
               <p className="text-xs text-white/50">{admin?.email || "admin"}</p>
             </div>
           </div>
-          <form action={adminLogout} className="mt-4 px-2">
+          <div className="mt-4 px-2">
             <button
               type="button"
               onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
@@ -158,13 +165,14 @@ export function Sidebar() {
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Logout
             </button>
-          </form>
+          </div>
         </div>
       </motion.nav>
 
@@ -219,7 +227,7 @@ export function Sidebar() {
               <p className="text-xs text-white/50">{admin?.email || "admin"}</p>
             </div>
           </div>
-          <form action={adminLogout} className="mt-4 px-2">
+          <div className="mt-4 px-2">
             <button
               type="button"
               onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
@@ -229,13 +237,14 @@ export function Sidebar() {
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Logout
             </button>
-          </form>
+          </div>
         </div>
       </nav>
     </>

@@ -1,15 +1,44 @@
 "use client";
 
-import { useActionState } from "react";
-import { adminLogin, type LoginFormState } from "@/app/actions/auth";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { ShieldCheck } from "lucide-react";
 
-const initialState: LoginFormState = {};
-
 export default function LoginPage() {
-  const [state, formAction, isPending] = useActionState(adminLogin, initialState);
+  const router = useRouter();
+  const [error, setError] = useState<string>();
+  const [isPending, setIsPending] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(undefined);
+    setIsPending(true);
+
+    const formData = new FormData(event.currentTarget);
+    try {
+      const response = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: String(formData.get("email") || ""),
+          password: String(formData.get("password") || ""),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(payload.error || "Login failed");
+        return;
+      }
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError("Unable to reach the backend API.");
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center px-4">
@@ -22,7 +51,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-white/50">Sign in to access the dashboard.</p>
         </div>
 
-        <form action={formAction} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-sm font-medium text-white/80">Email</label>
             <input id="email" name="email" type="email" required autoComplete="email" placeholder="admin@company.com" className="w-full" />
@@ -33,9 +62,9 @@ export default function LoginPage() {
             <input id="password" name="password" type="password" required autoComplete="current-password" placeholder="Enter password" className="w-full" />
           </div>
 
-          {state?.error && (
+          {error && (
             <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {state.error}
+              {error}
             </p>
           )}
 

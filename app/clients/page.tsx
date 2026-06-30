@@ -8,6 +8,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { createClient, updateClient, deleteClient } from "@/lib/actions";
+import { apiFetch } from "@/lib/api";
 import type { Client } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -39,7 +40,7 @@ export default function ClientsPage() {
 
   const fetchClients = async () => {
     try {
-      const res = await fetch("/api/clients");
+      const res = await apiFetch("/clients");
 
       if (res.status === 401) {
         router.replace("/login");

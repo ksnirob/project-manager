@@ -7,6 +7,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, ChevronDown, Eye } from "lucide-react";
 import { motion } from "framer-motion";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/actions";
+import { apiFetch } from "@/lib/api";
 import type { Invoice, InvoiceStatus, Client } from "@prisma/client";
 import { jsPDF } from "jspdf";
 
@@ -45,8 +46,8 @@ export default function InvoicesPage() {
   const fetchData = async () => {
     try {
       const [invoicesRes, clientsRes] = await Promise.all([
-        fetch("/api/invoices"),
-        fetch("/api/clients"),
+        apiFetch("/invoices"),
+        apiFetch("/clients"),
       ]);
       const invoicesData = await invoicesRes.json();
       const clientsData = await clientsRes.json();
@@ -138,7 +139,7 @@ export default function InvoicesPage() {
     setInvoices((prev) => prev.map((inv) => (inv.id === id ? { ...inv, status } : inv)));
 
     try {
-      const response = await fetch(`/api/invoices/${id}/status`, {
+      const response = await apiFetch(`/invoices/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

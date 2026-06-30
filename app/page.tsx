@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 
 const chartGridColor = "var(--chart-grid)";
 const chartAxisColor = "var(--chart-axis)";
@@ -70,7 +71,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/stats");
+        const res = await apiFetch("/stats");
         const data = await res.json();
         if (res.ok && data.totalClients !== undefined) {
           setStats(data);

@@ -33,6 +33,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createProject, updateProject, deleteProject } from "@/lib/actions";
+import { apiFetch } from "@/lib/api";
 import type { Project, Client, ProjectStatus } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -489,8 +490,8 @@ export default function ProjectsPage() {
   const fetchData = async () => {
     try {
       const [projectsRes, clientsRes] = await Promise.all([
-        fetch("/api/projects"),
-        fetch("/api/clients"),
+        apiFetch("/projects"),
+        apiFetch("/clients"),
       ]);
 
       if (projectsRes.status === 401 || clientsRes.status === 401) {

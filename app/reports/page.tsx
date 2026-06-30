@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import {
@@ -194,10 +195,10 @@ export default function ReportsPage() {
     setIsLoading(true);
     try {
       const [statsRes, projectsRes, tasksRes, invoicesRes] = await Promise.all([
-        fetch("/api/stats"),
-        fetch("/api/projects"),
-        fetch("/api/tasks"),
-        fetch("/api/invoices"),
+        apiFetch("/stats"),
+        apiFetch("/projects"),
+        apiFetch("/tasks"),
+        apiFetch("/invoices"),
       ]);
 
       if ([statsRes, projectsRes, tasksRes, invoicesRes].some((res) => res.status === 401)) {
