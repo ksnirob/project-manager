@@ -52,6 +52,8 @@ model User {
 
   notifications Notification[]
   sessions      Session[]
+
+  @@map("user")
 }
 
 model Session {
@@ -60,6 +62,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
 }
 
 model Client {
@@ -76,6 +80,8 @@ model Client {
 
   projects  Project[]
   invoices  Invoice[]
+
+  @@map("client")
 }
 
 model Project {
@@ -101,6 +107,8 @@ model Project {
 
   client                Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   tasks                 Task[]
+
+  @@map("project")
 }
 
 model Task {
@@ -116,6 +124,8 @@ model Task {
   updatedAt   DateTime     @updatedAt
 
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("task")
 }
 
 model Invoice {
@@ -131,6 +141,8 @@ model Invoice {
   updatedAt   DateTime      @updatedAt
 
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("invoice")
 }
 
 model Notification {
@@ -142,4 +154,6 @@ model Notification {
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification")
 }
