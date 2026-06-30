@@ -103,17 +103,17 @@ export function Sidebar() {
         initial={false}
         animate={{ x: isMobileMenuOpen ? 0 : -320 }}
         transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="fixed left-4 top-20 bottom-4 w-[85vw] max-w-72 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] z-50 md:hidden"
+        className="fixed left-4 top-20 bottom-4 w-[85vw] max-w-72 overflow-hidden bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-4 flex flex-col shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] z-50 md:hidden"
         aria-hidden={!isMobileMenuOpen}
       >
-        <div className="mb-8 pl-2">
+        <div className="mb-4 pl-2 shrink-0">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text flex flex-col tracking-tight">
             <span>Project</span>
             <span className="text-sm text-white/50 tracking-normal font-normal">Manager</span>
           </h2>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
 
@@ -122,7 +122,7 @@ export function Sidebar() {
                 <motion.div
                   whileTap={{ scale: 0.98 }}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors relative z-10",
+                    "flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-colors relative z-10",
                     isActive
                       ? "text-white"
                       : "text-white/60 hover:text-white hover:bg-white/5"
@@ -145,29 +145,30 @@ export function Sidebar() {
           })}
         </div>
 
-        <div className="mt-auto border-t border-white/10 pt-6">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white/20 flex items-center justify-center shadow-neon font-bold">
+        <div className="mt-3 shrink-0 border-t border-white/10 pt-3">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-gradient-to-tr from-blue-500 to-purple-500 text-sm font-bold shadow-neon">
               {(admin?.name?.charAt(0) || admin?.email?.charAt(0) || "A").toUpperCase()}
             </div>
-            <div>
-              <p className="text-sm font-medium">{admin?.name || "System Admin"}</p>
-              <p className="text-xs text-white/50">{admin?.email || "admin"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate whitespace-nowrap text-sm font-semibold leading-tight">{admin?.name || "System Admin"}</p>
+              <p className="truncate text-xs text-white/50">{admin?.email || "admin"}</p>
             </div>
-          </div>
-          <div className="mt-4 px-2">
             <button
               type="button"
               onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
-              className="mb-3 w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
+          </div>
+          <div className="mt-2">
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70 transition-colors hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-200 cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -217,29 +218,30 @@ export function Sidebar() {
           })}
         </div>
 
-        <div className="mt-auto border-t border-white/10 pt-6">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border-2 border-white/20 flex items-center justify-center shadow-neon font-bold">
+        <div className="mt-auto border-t border-white/10 pt-5">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/[0.04] p-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/20 bg-gradient-to-tr from-blue-500 to-purple-500 text-sm font-bold shadow-neon">
               {(admin?.name?.charAt(0) || admin?.email?.charAt(0) || "A").toUpperCase()}
             </div>
-            <div>
-              <p className="text-sm font-medium">{admin?.name || "System Admin"}</p>
-              <p className="text-xs text-white/50">{admin?.email || "admin"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate whitespace-nowrap text-sm font-semibold leading-tight">{admin?.name || "System Admin"}</p>
+              <p className="truncate text-xs text-white/50">{admin?.email || "admin"}</p>
             </div>
-          </div>
-          <div className="mt-4 px-2">
             <button
               type="button"
               onClick={() => applyTheme(theme === "dark" ? "light" : "dark")}
-              className="mb-3 w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
+          </div>
+          <div className="mt-2">
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/70 transition-colors hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-200 cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               Logout

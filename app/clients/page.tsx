@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Plus, Search, MoreVertical, Mail, Phone, Building, Edit, Trash2, User, CalendarDays, MapPin } from "lucide-react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
@@ -38,7 +38,7 @@ export default function ClientsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       const res = await apiFetch("/clients");
 
@@ -61,11 +61,11 @@ export default function ClientsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -388,7 +388,7 @@ export default function ClientsPage() {
               className="w-full resize-none"
             />
           </div>
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
             <AnimatedButton
               type="button"
               variant="ghost"

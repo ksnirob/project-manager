@@ -36,9 +36,6 @@ export default function InvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingInvoice, setEditingInvoice] = useState<InvoiceWithClient | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [totalOutstanding, setTotalOutstanding] = useState(0);
-  const [collectedThisMonth, setCollectedThisMonth] = useState(0);
-  const [totalPaid, setTotalPaid] = useState(0);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceWithClient | null>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
@@ -56,16 +53,10 @@ export default function InvoicesPage() {
       const nextClients = Array.isArray(clientsData) ? clientsData : [];
 
       setInvoices(nextInvoices);
-      setTotalOutstanding(typeof invoicesData?.totalOutstanding === "number" ? invoicesData.totalOutstanding : 0);
-      setCollectedThisMonth(typeof invoicesData?.collectedThisMonth === "number" ? invoicesData.collectedThisMonth : 0);
-      setTotalPaid(typeof invoicesData?.totalPaid === "number" ? invoicesData.totalPaid : 0);
       setClients(nextClients);
     } catch (error) {
       setInvoices([]);
       setClients([]);
-      setTotalOutstanding(0);
-      setCollectedThisMonth(0);
-      setTotalPaid(0);
       console.error("Failed to fetch data:", error);
     } finally {
       setIsLoading(false);
@@ -642,7 +633,7 @@ export default function InvoicesPage() {
               className="w-full"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white/80">Due Date</label>
               <input
@@ -677,7 +668,7 @@ export default function InvoicesPage() {
               className="w-full resize-none"
             />
           </div>
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
             <AnimatedButton type="button" variant="ghost" onClick={closeModal}>
               Cancel
             </AnimatedButton>
@@ -696,7 +687,7 @@ export default function InvoicesPage() {
       >
         {viewingInvoice && previewPdfUrl && (
           <div className="space-y-5">
-            <div className="h-[70vh] rounded-xl border border-white/10 bg-white overflow-hidden">
+            <div className="h-[62dvh] overflow-hidden rounded-xl border border-white/10 bg-white sm:h-[70vh]">
               <iframe
                 src={previewPdfUrl}
                 title={`Preview ${viewingInvoice.invoiceNo}`}
@@ -704,7 +695,7 @@ export default function InvoicesPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <AnimatedButton type="button" variant="ghost" onClick={closePreviewModal}>
                 Close
               </AnimatedButton>

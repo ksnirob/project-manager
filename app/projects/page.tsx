@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
@@ -487,7 +487,7 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(getStoredStatusFilter);
   const [projectFilesContent, setProjectFilesContent] = useState("");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [projectsRes, clientsRes] = await Promise.all([
         apiFetch("/projects"),
@@ -522,11 +522,11 @@ export default function ProjectsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -913,7 +913,7 @@ export default function ProjectsPage() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white/80">Budget ($)</label>
               <input
@@ -1058,7 +1058,7 @@ export default function ProjectsPage() {
               </select>
             </div>
           )}
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
             <AnimatedButton type="button" variant="ghost" onClick={closeModal}>
               Cancel
             </AnimatedButton>

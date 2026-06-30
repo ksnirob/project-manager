@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useCallback, useState, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { createPortal } from "react-dom";
 import { FloatingCard } from "@/components/ui/FloatingCard";
@@ -51,7 +51,7 @@ function KanbanBoardContent() {
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const tasksUrl = projectIdFilter
         ? `/tasks?projectId=${encodeURIComponent(projectIdFilter)}`
@@ -92,12 +92,12 @@ function KanbanBoardContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectIdFilter, router]);
 
   useEffect(() => {
     setIsMounted(true);
     fetchData();
-  }, [projectIdFilter]);
+  }, [fetchData]);
 
   const filteredProjectTitle = projectIdFilter
     ? projects.find((project) => project.id === projectIdFilter)?.title
@@ -483,7 +483,7 @@ function KanbanBoardContent() {
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-white/80">Priority</label>
               <select
@@ -531,7 +531,7 @@ function KanbanBoardContent() {
               className="w-full resize-none"
             />
           </div>
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
             <AnimatedButton type="button" variant="ghost" onClick={closeModal}>
               Cancel
             </AnimatedButton>
