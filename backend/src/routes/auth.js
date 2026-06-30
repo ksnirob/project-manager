@@ -45,7 +45,7 @@ authRouter.post("/login", async (req, res) => {
 
     res.cookie(ADMIN_SESSION_COOKIE, token, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
       maxAge: SESSION_MAX_AGE_SECONDS * 1000,
       path: "/",
@@ -69,7 +69,11 @@ authRouter.post("/login", async (req, res) => {
 authRouter.post("/logout", requireAdmin, async (req, res) => {
   try {
     await prisma.session.deleteMany({ where: { sessionToken: req.adminToken } });
-    res.clearCookie(ADMIN_SESSION_COOKIE, { path: "/" });
+    res.clearCookie(ADMIN_SESSION_COOKIE, {
+      path: "/",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
     return res.json({ success: true });
   } catch (error) {
     console.error("Logout failed:", error);

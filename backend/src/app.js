@@ -11,11 +11,22 @@ const { statsRouter } = require("./routes/stats");
 
 const app = express();
 
-const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:3000";
+const allowedOrigins = new Set(
+  (process.env.FRONTEND_URL || "http://localhost:3000")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
     credentials: true,
   })
 );

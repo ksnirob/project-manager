@@ -28,7 +28,11 @@ async function requireAdmin(req, res, next) {
       if (session) {
         await prisma.session.deleteMany({ where: { sessionToken: token } });
       }
-      res.clearCookie(ADMIN_SESSION_COOKIE, { path: "/" });
+      res.clearCookie(ADMIN_SESSION_COOKIE, {
+        path: "/",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
       return res.status(401).json({ error: "Unauthorized" });
     }
 
