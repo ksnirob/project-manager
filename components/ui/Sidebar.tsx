@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -22,17 +22,30 @@ export function Sidebar() {
   const router = useRouter();
   const [admin, setAdmin] = useState<{ name: string | null; email: string } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    return window.localStorage.getItem("project-manager:theme") === "dark" ? "dark" : "light";
-  });
+  const theme = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener("storage", onChange);
+      window.addEventListener("project-manager-theme", onChange);
+      return () => {
+        window.removeEventListener("storage", onChange);
+        window.removeEventListener("project-manager-theme", onChange);
+      };
+    },
+    () => window.localStorage.getItem("project-manager:theme") === "dark" ? "dark" : "light",
+    () => "light"
+  );
 
   const applyTheme = (nextTheme: "light" | "dark") => {
     document.documentElement.classList.remove("light", "dark");
     document.documentElement.classList.add(nextTheme);
     window.localStorage.setItem("project-manager:theme", nextTheme);
-    setTheme(nextTheme);
+    window.dispatchEvent(new Event("project-manager-theme"));
   };
+
+  useEffect(() => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
+  }, [theme]);
 
   useEffect(() => {
     const loadAdmin = async () => {
@@ -58,13 +71,6 @@ export function Sidebar() {
     router.replace("/login");
     router.refresh();
   };
-
-  useEffect(() => {
-    const storedTheme = window.localStorage.getItem("project-manager:theme");
-    const nextTheme = storedTheme === "dark" ? "dark" : "light";
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(nextTheme);
-  }, []);
 
   useEffect(() => {
     if (!isMobileMenuOpen) return;

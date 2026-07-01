@@ -40,15 +40,21 @@ enum InvoiceStatus {
   PAID
 }
 
+enum InvoiceSource {
+  PROJECT_BUDGET
+  TASK_BUDGET
+  CUSTOM
+}
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  password      String
-  role          UserRole  @default(MEMBER)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      UserRole @default(MEMBER)
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   notifications Notification[]
   sessions      Session[]
@@ -67,19 +73,19 @@ model Session {
 }
 
 model Client {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  email     String    @unique
+  email     String   @unique
   phone     String?
   company   String?
   address   String?
   notes     String?
   avatar    String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  projects  Project[]
-  invoices  Invoice[]
+  projects Project[]
+  invoices Invoice[]
 
   @@map("client")
 }
@@ -105,8 +111,9 @@ model Project {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  client                Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tasks                 Task[]
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tasks    Task[]
+  invoices Invoice[]
 
   @@map("project")
 }
@@ -119,30 +126,59 @@ model Task {
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?
   order       Int          @default(0)
+  budget      Float?
   projectId   String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
 
   @@map("task")
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  invoiceNo   String        @unique
-  amount      Float
-  status      InvoiceStatus @default(UNPAID)
-  dueDate     DateTime?
-  paidAt      DateTime?
-  notes       String?
-  clientId    String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id         String        @id @default(cuid())
+  invoiceNo  String        @unique
+  amount     Float
+  paidAmount Float         @default(0)
+  status     InvoiceStatus @default(UNPAID)
+  dueDate    DateTime?
+  paidAt     DateTime?
+  notes      String?
+  source     InvoiceSource @default(CUSTOM)
+  clientId   String
+  projectId  String?
+  taskId     String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
-  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task     Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  payments Payment[]
 
+  @@index([projectId])
+  @@index([taskId])
+  @@index([source])
   @@map("invoice")
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  amount    Float
+  paidAt    DateTime @default(now())
+  method    String?
+  reference String?
+  notes     String?
+  invoiceId String
+  createdAt DateTime @default(now())
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("payment")
 }
 
 model Notification {
@@ -153,7 +189,7 @@ model Notification {
   userId    String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification")
 }

@@ -14,6 +14,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
     ...init,
     headers,
     credentials: "include",
+    cache: "no-store",
   });
 }
 

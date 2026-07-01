@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, GripVertical, Trash2, Edit, Calendar, Clock } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit, Calendar, Clock, CircleDollarSign } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
@@ -50,6 +50,7 @@ function KanbanBoardContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [hasBudget, setHasBudget] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -73,20 +74,17 @@ function KanbanBoardContent() {
       ]);
 
       if (!tasksRes.ok || !Array.isArray(tasksData)) {
-        console.error("Failed to fetch tasks:", tasksData);
         setTasks([]);
       } else {
         setTasks(tasksData);
       }
 
       if (!projectsRes.ok || !Array.isArray(projectsData)) {
-        console.error("Failed to fetch projects:", projectsData);
         setProjects([]);
       } else {
         setProjects(projectsData);
       }
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
+    } catch (_) {
       setTasks([]);
       setProjects([]);
     } finally {
@@ -170,10 +168,11 @@ function KanbanBoardContent() {
     const newStatus = statusMap[destination.droppableId];
 
     try {
-      await updateTaskStatus(draggableId, newStatus, destination.index);
+      const result = await updateTaskStatus(draggableId, newStatus, destination.index);
+      if (!result.success) throw new Error(result.error || "Failed to update task status");
       await fetchData();
-    } catch (error) {
-      console.error("Failed to update task status:", error);
+    } catch (_) {
+      // status drag silently ignored
     }
   };
 
@@ -188,14 +187,16 @@ function KanbanBoardContent() {
       description: formData.get("description") as string || undefined,
       priority: formData.get("priority") as TaskPriority,
       dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : undefined,
+      budget: formData.get("budget") ? Number(formData.get("budget")) : undefined,
     };
 
     try {
-      await createTask(taskData);
+      const result = await createTask(taskData);
+      if (!result.success) throw new Error(result.error || "Failed to create task");
       await fetchData();
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Failed to create task:", error);
+      alert(error instanceof Error ? error.message : "Failed to create task");
     } finally {
       setIsSubmitting(false);
     }
@@ -211,19 +212,21 @@ function KanbanBoardContent() {
     const taskData = {
       title: formData.get("title") as string,
       projectId: formData.get("projectId") as string,
-      description: formData.get("description") as string || undefined,
+      description: (formData.get("description") as string)?.trim() || null,
       priority: formData.get("priority") as TaskPriority,
       status: formData.get("status") as TaskStatus,
       dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : undefined,
+      budget: formData.get("budget") ? Number(formData.get("budget")) : undefined,
     };
 
     try {
-      await updateTask(editingTask.id, taskData);
+      const result = await updateTask(editingTask.id, taskData);
+      if (!result.success) throw new Error(result.error || "Failed to update task");
       await fetchData();
       setIsModalOpen(false);
       setEditingTask(null);
     } catch (error) {
-      console.error("Failed to update task:", error);
+      alert(error instanceof Error ? error.message : "Failed to update task");
     } finally {
       setIsSubmitting(false);
     }
@@ -238,17 +241,20 @@ function KanbanBoardContent() {
 
   const openEditModal = (task: TaskWithProject) => {
     setEditingTask(task);
+    setHasBudget(typeof task.budget === "number" && task.budget > 0);
     setIsModalOpen(true);
   };
 
   const openCreateModal = () => {
     setEditingTask(null);
+    setHasBudget(false);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingTask(null);
+    setHasBudget(false);
   };
 
   const isOverdue = (dueDate: Date | null) => {
@@ -413,6 +419,11 @@ function KanbanBoardContent() {
                                                     {fullTask.project.title}
                                                   </span>
                                                 )}
+                                                {typeof fullTask?.budget === "number" && fullTask.budget > 0 && (
+                                                  <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                                                    <CircleDollarSign size={11} /> ${fullTask.budget.toLocaleString()}
+                                                  </span>
+                                                )}
                                               </div>
 
                                               {task.dueDate && (
@@ -506,6 +517,28 @@ function KanbanBoardContent() {
                 className="w-full"
               />
             </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <button
+              type="button"
+              onClick={() => setHasBudget((prev) => !prev)}
+              className={`flex w-full items-center justify-between text-sm ${hasBudget ? "text-emerald-300" : "text-white/60"}`}
+            >
+              <span className="flex items-center gap-2"><CircleDollarSign size={17} /> Add task budget</span>
+              <span>{hasBudget ? "Enabled" : "Optional"}</span>
+            </button>
+            {hasBudget && (
+              <input
+                type="number"
+                name="budget"
+                min="0.01"
+                step="0.01"
+                required
+                placeholder="Task amount"
+                defaultValue={editingTask?.budget ?? ""}
+                className="mt-3 w-full"
+              />
+            )}
           </div>
           {editingTask && (
             <div className="space-y-1.5">

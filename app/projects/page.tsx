@@ -88,7 +88,27 @@ const projectTypes = [
   "Bug Fix",
 ] as const;
 
-type ProjectWithClient = Project & { client: Client };
+type ProjectWithClient = Project & {
+  client: Client;
+  paidAmount?: number;
+  dueAmount?: number;
+  taskBudgetAdded?: number;
+  taskBudgetHistory?: Array<{
+    taskId: string;
+    taskTitle: string;
+    amount: number;
+    createdAt: string | Date;
+  }>;
+};
+
+type TaskForProjectSync = {
+  id: string;
+  title: string;
+  status: "TODO" | "IN_PROGRESS" | "DONE";
+  budget?: number | null;
+  projectId: string;
+  createdAt: string | Date;
+};
 
 const allowedRichTextTags = new Set([
   "a",
@@ -489,34 +509,96 @@ export default function ProjectsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [projectsRes, clientsRes] = await Promise.all([
+      const [projectsRes, clientsRes, tasksRes] = await Promise.all([
         apiFetch("/projects"),
         apiFetch("/clients"),
+        apiFetch("/tasks"),
       ]);
 
-      if (projectsRes.status === 401 || clientsRes.status === 401) {
+      if (projectsRes.status === 401 || clientsRes.status === 401 || tasksRes.status === 401) {
         router.replace("/login");
         return;
       }
 
       const projectsData = await projectsRes.json();
       const clientsData = await clientsRes.json();
+      const tasksData = await tasksRes.json();
 
       if (!projectsRes.ok || !Array.isArray(projectsData)) {
-        console.error("Failed to fetch projects:", projectsData);
         setProjects([]);
       } else {
-        setProjects(projectsData);
+        const tasks: TaskForProjectSync[] = tasksRes.ok && Array.isArray(tasksData) ? tasksData : [];
+        const taskSummaryByProject = tasks.reduce<Record<string, {
+          total: number;
+          incomplete: number;
+          taskBudgetAdded: number;
+          taskBudgetHistory: Array<{ taskId: string; taskTitle: string; amount: number; createdAt: string | Date }>;
+        }>>((acc, task) => {
+          const entry = acc[task.projectId] || {
+            total: 0,
+            incomplete: 0,
+            taskBudgetAdded: 0,
+            taskBudgetHistory: [],
+          };
+
+          entry.total += 1;
+          if (task.status !== "DONE") {
+            entry.incomplete += 1;
+          }
+
+          const budget = typeof task.budget === "number" ? task.budget : Number(task.budget || 0);
+          if (Number.isFinite(budget) && budget > 0) {
+            entry.taskBudgetAdded += budget;
+            entry.taskBudgetHistory.push({
+              taskId: task.id,
+              taskTitle: task.title,
+              amount: budget,
+              createdAt: task.createdAt,
+            });
+          }
+
+          acc[task.projectId] = entry;
+          return acc;
+        }, {});
+
+        const mergedProjects: ProjectWithClient[] = projectsData.map((project: ProjectWithClient) => {
+          const summary = taskSummaryByProject[project.id];
+          if (!summary) {
+            return {
+              ...project,
+              taskBudgetAdded: project.taskBudgetAdded || 0,
+              taskBudgetHistory: project.taskBudgetHistory || [],
+            };
+          }
+
+          const derivedStatus: ProjectStatus =
+            summary.total === 0
+              ? project.status
+              : summary.incomplete > 0
+                ? "ACTIVE"
+                : "COMPLETED";
+
+          const taskBudgetHistory = [...summary.taskBudgetHistory].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+
+          return {
+            ...project,
+            status: derivedStatus,
+            taskBudgetAdded: summary.taskBudgetAdded,
+            taskBudgetHistory,
+          };
+        });
+
+        setProjects(mergedProjects);
       }
 
       if (!clientsRes.ok || !Array.isArray(clientsData)) {
-        console.error("Failed to fetch clients:", clientsData);
         setClients([]);
       } else {
         setClients(clientsData);
       }
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
+    } catch (_) {
       setProjects([]);
       setClients([]);
     } finally {
@@ -544,7 +626,7 @@ export default function ProjectsPage() {
       clientId: formData.get("clientId") as string,
       budget: formData.get("budget") ? Number(formData.get("budget")) : undefined,
       deadline: formData.get("deadline") ? new Date(formData.get("deadline") as string) : undefined,
-      type: formData.get("type") as string || undefined,
+      type: (formData.get("type") as string)?.trim() || null,
       status: (formData.get("status") as ProjectStatus | null) ?? undefined,
       hasProjectCredentials,
       projectUrl: hasProjectCredentials ? getOptionalField("projectUrl") : null,
@@ -574,8 +656,8 @@ export default function ProjectsPage() {
       await fetchData();
       setIsModalOpen(false);
       setEditingProject(null);
-    } catch (error) {
-      console.error("Failed to save project:", error);
+    } catch (_) {
+      // save failed silently; alert already shown above
     } finally {
       setIsSubmitting(false);
     }
@@ -678,7 +760,7 @@ export default function ProjectsPage() {
               setStatusFilter(nextStatusFilter);
               window.localStorage.setItem(projectStatusFilterStorageKey, nextStatusFilter);
             }}
-            className="h-11 !w-full xl:!w-48 shrink-0 rounded-xl border border-white/10 bg-white/5 !px-4 !py-0 text-sm leading-none text-white/75"
+            className="h-11 !w-full xl:!w-48 shrink-0 rounded-xl border border-white/10 bg-white/5 !pl-4 !pr-10 !py-0 text-sm leading-none text-white/75"
           >
             {statusFilterOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -817,6 +899,18 @@ export default function ProjectsPage() {
                           </div>
                         )}
                       </div>
+                      {project.budget && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-emerald-300">Paid ${(project.paidAmount || 0).toLocaleString()}</span>
+                          <span className="text-amber-300">Due ${(project.dueAmount ?? project.budget).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {typeof project.taskBudgetAdded === "number" && project.taskBudgetAdded > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-indigo-300">Task Budget Added</span>
+                          <span className="text-indigo-200">+${project.taskBudgetAdded.toLocaleString()}</span>
+                        </div>
+                      )}
 
                       <div className={`text-xs ${isCompleted ? "completed-project-created" : "text-white/45"}`}>
                         Created {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -1099,6 +1193,41 @@ export default function ProjectsPage() {
                 <p className="text-white/90 font-medium">
                   {typeof viewingProject.budget === "number" ? `$${viewingProject.budget.toLocaleString()}` : "-"}
                 </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Payments</p>
+                <p className="font-medium text-emerald-300">Paid ${(viewingProject.paidAmount || 0).toLocaleString()}</p>
+                <p className="mt-1 text-sm text-amber-300">Due ${(viewingProject.dueAmount || 0).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 md:col-span-2">
+                <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Task Budget History</p>
+                <p className="text-sm text-indigo-200 mb-3">
+                  Total Added from Tasks: +${(viewingProject.taskBudgetAdded || 0).toLocaleString()}
+                </p>
+                {viewingProject.taskBudgetHistory && viewingProject.taskBudgetHistory.length > 0 ? (
+                  <div className="space-y-2">
+                    {viewingProject.taskBudgetHistory.slice(0, 8).map((entry) => (
+                      <div
+                        key={entry.taskId}
+                        className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm text-white/85">{entry.taskTitle}</p>
+                          <p className="text-xs text-white/45">
+                            {new Date(entry.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <p className="text-sm font-medium text-indigo-200">+${entry.amount.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/50">No task budget additions yet.</p>
+                )}
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Deadline</p>

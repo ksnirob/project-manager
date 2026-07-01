@@ -26,15 +26,12 @@ statsRouter.get("/", requireAdmin, async (_req, res) => {
       prisma.task.count({ where: { status: "DONE" } }),
       prisma.task.count({ where: { status: { not: "DONE" } } }),
       prisma.project.count(),
-      prisma.invoice.aggregate({
-        where: {
-          status: "PAID",
-          paidAt: { gte: startOfMonth },
-        },
+      prisma.payment.aggregate({
+        where: { paidAt: { gte: startOfMonth } },
         _sum: { amount: true },
       }),
       prisma.invoice.findMany({
-        include: { client: true },
+        include: { client: true, project: true, task: true, payments: true },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
@@ -50,11 +47,8 @@ statsRouter.get("/", requireAdmin, async (_req, res) => {
       }),
     ]);
 
-    const monthlyData = await prisma.invoice.findMany({
-      where: {
-        status: "PAID",
-        paidAt: { gte: sixMonthsAgo },
-      },
+    const monthlyData = await prisma.payment.findMany({
+      where: { paidAt: { gte: sixMonthsAgo } },
       select: {
         amount: true,
         paidAt: true,
@@ -68,13 +62,11 @@ statsRouter.get("/", requireAdmin, async (_req, res) => {
       revenueByMonth[key] = 0;
     }
 
-    monthlyData.forEach((inv) => {
-      if (inv.paidAt) {
-        const date = new Date(inv.paidAt);
-        const key = date.toLocaleDateString("en-US", { month: "short" });
-        if (Object.prototype.hasOwnProperty.call(revenueByMonth, key)) {
-          revenueByMonth[key] += inv.amount;
-        }
+    monthlyData.forEach((payment) => {
+      const date = new Date(payment.paidAt);
+      const key = date.toLocaleDateString("en-US", { month: "short" });
+      if (Object.prototype.hasOwnProperty.call(revenueByMonth, key)) {
+        revenueByMonth[key] += payment.amount;
       }
     });
 
@@ -98,8 +90,7 @@ statsRouter.get("/", requireAdmin, async (_req, res) => {
       recentProjects,
       recentTasks,
     });
-  } catch (error) {
-    console.error("Failed to fetch stats:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Failed to fetch stats" });
   }
 });

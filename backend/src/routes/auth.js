@@ -63,8 +63,7 @@ authRouter.post("/login", async (req, res) => {
         role: user.role,
       },
     });
-  } catch (error) {
-    console.error("Login failed:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Login failed" });
   }
 });
@@ -79,8 +78,7 @@ authRouter.post("/logout", requireAdmin, async (req, res) => {
       domain: sessionCookieDomain,
     });
     return res.json({ success: true });
-  } catch (error) {
-    console.error("Logout failed:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Logout failed" });
   }
 });

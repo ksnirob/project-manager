@@ -49,14 +49,12 @@ export default function ClientsPage() {
 
       const data = await res.json();
       if (!res.ok || !Array.isArray(data)) {
-        console.error("Failed to fetch clients:", data);
         setClients([]);
         return;
       }
 
       setClients(data);
-    } catch (error) {
-      console.error("Failed to fetch clients:", error);
+    } catch (_) {
       setClients([]);
     } finally {
       setIsLoading(false);
@@ -103,8 +101,8 @@ export default function ClientsPage() {
       await fetchClients();
       setIsModalOpen(false);
       setEditingClient(null);
-    } catch (error) {
-      console.error("Failed to save client:", error);
+    } catch (_) {
+      // save failed
     } finally {
       setIsSubmitting(false);
     }

@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, ChevronDown, Eye } from "lucide-react";
+import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, Eye, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/actions";
 import { apiFetch } from "@/lib/api";
-import type { Invoice, InvoiceStatus, Client } from "@prisma/client";
+import type { Invoice, InvoiceStatus, Client, InvoiceSource } from "@prisma/client";
 import { jsPDF } from "jspdf";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -19,7 +19,22 @@ const timeRangeOptions: Array<{ value: TimeRange; label: string }> = [
   { value: "yearly", label: "Year" },
 ];
 
-type InvoiceWithClient = Invoice & { client: Client };
+type ProjectOption = { id: string; title: string; clientId: string };
+type TaskOption = { id: string; title: string; projectId: string; project: { title: string; clientId: string } };
+type PaymentItem = { id: string; amount: number; paidAt: string | Date; method?: string | null; reference?: string | null; notes?: string | null };
+type InvoiceWithClient = Invoice & {
+  client: Client;
+  project?: { id: string; title: string } | null;
+  task?: { id: string; title: string } | null;
+  payments?: PaymentItem[];
+  source: InvoiceSource;
+  paidAmount?: number;
+  balance?: number;
+};
+
+const getInvoicePaidAmount = (invoice: InvoiceWithClient) =>
+  Number((invoice as InvoiceWithClient & { paidAmount?: number }).paidAmount || 0);
+const getInvoiceDueAmount = (invoice: InvoiceWithClient) => Math.max(invoice.amount - getInvoicePaidAmount(invoice), 0);
 
 const statusStyles = {
   PAID: { icon: CheckCircle, className: "text-emerald-400 bg-emerald-500/15 border-emerald-500/20" },
@@ -30,6 +45,8 @@ const statusStyles = {
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<InvoiceWithClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,25 +56,34 @@ export default function InvoicesPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceWithClient | null>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [paymentInvoice, setPaymentInvoice] = useState<InvoiceWithClient | null>(null);
+  const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
 
   const fetchData = async () => {
     try {
-      const [invoicesRes, clientsRes] = await Promise.all([
+      const [invoicesRes, clientsRes, projectsRes, tasksRes] = await Promise.all([
         apiFetch("/invoices"),
         apiFetch("/clients"),
+        apiFetch("/projects"),
+        apiFetch("/tasks"),
       ]);
       const invoicesData = await invoicesRes.json();
       const clientsData = await clientsRes.json();
+      const projectsData = await projectsRes.json();
+      const tasksData = await tasksRes.json();
 
       const nextInvoices = Array.isArray(invoicesData?.invoices) ? invoicesData.invoices : [];
       const nextClients = Array.isArray(clientsData) ? clientsData : [];
 
       setInvoices(nextInvoices);
       setClients(nextClients);
-    } catch (error) {
+      setProjects(Array.isArray(projectsData) ? projectsData : []);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+    } catch {
       setInvoices([]);
       setClients([]);
-      console.error("Failed to fetch data:", error);
+      setProjects([]);
+      setTasks([]);
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +109,8 @@ export default function InvoicesPage() {
     const invoiceData = {
       clientId: formData.get("clientId") as string,
       amount: Number(formData.get("amount")),
+      projectId: (formData.get("projectId") as string) || undefined,
+      taskId: (formData.get("taskId") as string) || undefined,
       dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : undefined,
       notes: formData.get("notes") as string || undefined,
     };
@@ -91,8 +119,8 @@ export default function InvoicesPage() {
       await createInvoice(invoiceData);
       await fetchData();
       setIsModalOpen(false);
-    } catch (error) {
-      console.error("Failed to create invoice:", error);
+    } catch {
+      // create invoice failed
     } finally {
       setIsSubmitting(false);
     }
@@ -108,9 +136,10 @@ export default function InvoicesPage() {
     const invoiceData = {
       clientId: formData.get("clientId") as string,
       amount: Number(formData.get("amount")),
+      projectId: (formData.get("projectId") as string) || null,
+      taskId: (formData.get("taskId") as string) || null,
       dueDate: formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : undefined,
-      notes: formData.get("notes") as string || undefined,
-      status: formData.get("status") as InvoiceStatus,
+      notes: (formData.get("notes") as string)?.trim() || null,
     };
 
     try {
@@ -118,48 +147,42 @@ export default function InvoicesPage() {
       await fetchData();
       setIsModalOpen(false);
       setEditingInvoice(null);
-    } catch (error) {
-      console.error("Failed to update invoice:", error);
+    } catch {
+      // update invoice failed
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleUpdateStatus = async (id: string, status: InvoiceStatus) => {
-    const previousInvoices = invoices;
-    setInvoices((prev) => prev.map((inv) => (inv.id === id ? { ...inv, status } : inv)));
-
+  const handleRecordPayment = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!paymentInvoice) return;
+    setIsSubmitting(true);
+    const formData = new FormData(event.currentTarget);
     try {
-      const response = await apiFetch(`/invoices/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+      const response = await apiFetch(
+        editingPayment
+          ? `/invoices/${paymentInvoice.id}/payments/${editingPayment.id}`
+          : `/invoices/${paymentInvoice.id}/payments`, {
+        method: editingPayment ? "PATCH" : "POST",
+        body: JSON.stringify({
+          amount: Number(formData.get("amount")),
+          paidAt: formData.get("paidAt") || undefined,
+          method: formData.get("method") || undefined,
+          reference: formData.get("reference") || undefined,
+          notes: formData.get("notes") || undefined,
+        }),
       });
-
       const result = await response.json();
-
-      if (!response.ok || !result.success || !result.data) {
-        setInvoices(previousInvoices);
-        alert(result.error || "Failed to update invoice status");
+      if (!response.ok) {
+        alert(result.error || "Failed to record payment");
         return;
       }
-
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === id
-            ? {
-                ...inv,
-                status: result.data.status,
-                paidAt: result.data.paidAt,
-              }
-            : inv
-        )
-      );
-
+      setPaymentInvoice(null);
+      setEditingPayment(null);
       await fetchData();
-    } catch (error) {
-      setInvoices(previousInvoices);
-      console.error("Failed to update invoice status:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -334,16 +357,14 @@ export default function InvoicesPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const totalOutstandingInRange = filteredInvoices
-    .filter((inv) => inv.status !== "PAID")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+    .reduce((sum, inv) => sum + getInvoiceDueAmount(inv), 0);
 
   const totalPaidInRange = filteredInvoices
-    .filter((inv) => inv.status === "PAID")
-    .reduce((sum, inv) => sum + inv.amount, 0);
+    .reduce((sum, inv) => sum + getInvoicePaidAmount(inv), 0);
 
   const collectedInRange = filteredInvoices
-    .filter((inv) => Boolean(inv.paidAt))
-    .reduce((sum, inv) => sum + inv.amount, 0);
+    .filter((inv) => Boolean(inv.paidAt) && getInvoicePaidAmount(inv) > 0)
+    .reduce((sum, inv) => sum + getInvoicePaidAmount(inv), 0);
 
   const isOverdue = (dueDate: Date | null, status: InvoiceStatus) => {
     if (!dueDate || status === "PAID") return false;
@@ -433,6 +454,7 @@ export default function InvoicesPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05, type: "spring" }}
+                    className={menuOpen === invoice.id ? "relative z-50" : "relative z-0"}
                   >
                     <FloatingCard className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 group !overflow-visible">
                       <div className="flex items-center gap-4">
@@ -449,6 +471,13 @@ export default function InvoicesPage() {
                             )}
                           </div>
                           <p className="text-sm text-white/50">{invoice.client.name}</p>
+                          <p className="text-xs text-indigo-300/70">
+                            {invoice.task?.title
+                              ? `Task: ${invoice.task.title}`
+                              : invoice.project?.title
+                                ? `Project: ${invoice.project.title}`
+                                : "Standalone custom invoice"}
+                          </p>
                         </div>
                       </div>
 
@@ -471,19 +500,9 @@ export default function InvoicesPage() {
 
                         <div className="flex flex-col items-start lg:items-end">
                           <p className="text-xs text-white/40 mb-1">Status</p>
-                          <div className="relative">
-                            <select
-                              value={invoice.status}
-                              onChange={(e) => handleUpdateStatus(invoice.id, e.target.value as InvoiceStatus)}
-                              className={`appearance-none min-w-[96px] pr-7 pl-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer ${Status.className} bg-transparent`}
-                              style={{ appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }}
-                            >
-                              <option value="UNPAID">Unpaid</option>
-                              <option value="PARTIAL">Partial</option>
-                              <option value="PAID">Paid</option>
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/80" />
-                          </div>
+                          <span className={`min-w-[96px] px-3 py-1.5 rounded-lg text-center text-xs font-medium border ${Status.className}`}>
+                            {invoice.status === "PAID" ? "Paid" : invoice.status === "PARTIAL" ? "Partial" : "Unpaid"}
+                          </span>
                         </div>
 
                         <div className="lg:text-right min-w-[120px]">
@@ -491,9 +510,20 @@ export default function InvoicesPage() {
                           <p className="text-xl font-bold text-white/90">
                             ${invoice.amount.toLocaleString()}
                           </p>
+                          <p className="text-[11px] text-white/45">Paid ${getInvoicePaidAmount(invoice).toLocaleString()}</p>
+                          <p className="text-[11px] text-white/45">Due ${getInvoiceDueAmount(invoice).toLocaleString()}</p>
                         </div>
 
                         <div className="flex items-center gap-1 lg:ml-4">
+                          {getInvoiceDueAmount(invoice) > 0 && (
+                            <button
+                              onClick={() => { setEditingPayment(null); setPaymentInvoice(invoice); }}
+                              className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition-colors"
+                              title="Record payment"
+                            >
+                              <DollarSign size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={() => openPreviewModal(invoice)}
                             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
@@ -627,11 +657,31 @@ export default function InvoicesPage() {
               name="amount"
               placeholder="5000"
               required
-              min="0"
+              min="0.01"
               step="0.01"
               defaultValue={editingInvoice?.amount}
               className="w-full"
             />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-white/80">Related Project</label>
+              <select name="projectId" defaultValue={editingInvoice?.projectId || ""} className="w-full">
+                <option value="">No project</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.title}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-white/80">Related Task</label>
+              <select name="taskId" defaultValue={editingInvoice?.taskId || ""} className="w-full">
+                <option value="">No task</option>
+                {tasks.map((task) => (
+                  <option key={task.id} value={task.id}>{task.project.title} / {task.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -643,20 +693,6 @@ export default function InvoicesPage() {
                 className="w-full"
               />
             </div>
-            {editingInvoice && (
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-white/80">Status</label>
-                <select
-                  name="status"
-                  defaultValue={editingInvoice.status}
-                  className="w-full"
-                >
-                  <option value="UNPAID">Unpaid</option>
-                  <option value="PARTIAL">Partial</option>
-                  <option value="PAID">Paid</option>
-                </select>
-              </div>
-            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-white/80">Notes</label>
@@ -677,6 +713,70 @@ export default function InvoicesPage() {
             </AnimatedButton>
           </div>
         </form>
+      </GlassModal>
+
+      <GlassModal
+        isOpen={Boolean(paymentInvoice)}
+        onClose={() => { setPaymentInvoice(null); setEditingPayment(null); }}
+        title={editingPayment ? "Edit Payment" : "Record Payment"}
+      >
+        {paymentInvoice && (
+          <form key={editingPayment?.id || "new-payment"} className="space-y-4" onSubmit={handleRecordPayment}>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+              <div className="flex justify-between"><span className="text-white/50">Invoice</span><span>{paymentInvoice.invoiceNo}</span></div>
+              <div className="mt-2 flex justify-between"><span className="text-white/50">Balance due</span><span className="font-semibold text-amber-300">${getInvoiceDueAmount(paymentInvoice).toLocaleString()}</span></div>
+            </div>
+            {paymentInvoice.payments && paymentInvoice.payments.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-white/80">Payment History</h3>
+                  {editingPayment && (
+                    <button type="button" onClick={() => setEditingPayment(null)} className="text-xs text-indigo-300 hover:text-indigo-200">Add new instead</button>
+                  )}
+                </div>
+                <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                  {paymentInvoice.payments.map((payment) => (
+                    <div key={payment.id} className={`flex items-center justify-between rounded-xl border p-3 ${editingPayment?.id === payment.id ? "border-indigo-400/50 bg-indigo-500/10" : "border-white/10 bg-white/[0.03]"}`}>
+                      <div>
+                        <p className="font-semibold text-emerald-300">${payment.amount.toLocaleString()}</p>
+                        <p className="text-xs text-white/45">{new Date(payment.paidAt).toLocaleDateString()} · {payment.method || "No method"}{payment.reference ? ` · ${payment.reference}` : ""}</p>
+                      </div>
+                      <button type="button" onClick={() => setEditingPayment(payment)} className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white">Edit</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white/80">Payment Amount *</label>
+                <input name="amount" type="number" min="0.01" max={getInvoiceDueAmount(paymentInvoice) + (editingPayment?.amount || 0)} step="0.01" required defaultValue={editingPayment?.amount} className="w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white/80">Payment Date</label>
+                <input name="paidAt" type="date" defaultValue={editingPayment ? new Date(editingPayment.paidAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)} className="w-full" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white/80">Method</label>
+                <select name="method" defaultValue={editingPayment?.method || "Bank Transfer"} className="w-full">
+                  <option>Bank Transfer</option><option>Cash</option><option>Card</option><option>Mobile Banking</option><option>Other</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white/80">Reference</label>
+                <input name="reference" placeholder="Transaction ID" defaultValue={editingPayment?.reference || ""} className="w-full" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-white/80">Notes</label>
+              <textarea name="notes" rows={2} defaultValue={editingPayment?.notes || ""} className="w-full resize-none" />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <AnimatedButton type="button" variant="ghost" onClick={() => { setPaymentInvoice(null); setEditingPayment(null); }}>Cancel</AnimatedButton>
+              <AnimatedButton type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : editingPayment ? "Update Payment" : "Record Payment"}</AnimatedButton>
+            </div>
+          </form>
+        )}
       </GlassModal>
 
       <GlassModal

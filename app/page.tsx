@@ -76,8 +76,8 @@ export default function Dashboard() {
         if (res.ok && data.totalClients !== undefined) {
           setStats(data);
         }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
+      } catch (_) {
+        // stats unavailable
       } finally {
         setIsLoading(false);
       }

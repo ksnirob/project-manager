@@ -10,8 +10,7 @@ clientsRouter.get("/", requireAdmin, async (_req, res) => {
       orderBy: { name: "asc" },
     });
     return res.json(clients);
-  } catch (error) {
-    console.error("Failed to fetch clients:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Failed to fetch clients" });
   }
 });
@@ -36,8 +35,7 @@ clientsRouter.post("/", requireAdmin, async (req, res) => {
     });
 
     return res.status(201).json({ success: true, data: client });
-  } catch (error) {
-    console.error("Failed to create client:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Failed to create client" });
   }
 });
@@ -60,8 +58,7 @@ clientsRouter.patch("/:id", requireAdmin, async (req, res) => {
     });
 
     return res.json({ success: true, data: client });
-  } catch (error) {
-    console.error("Failed to update client:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Failed to update client" });
   }
 });
@@ -71,8 +68,7 @@ clientsRouter.delete("/:id", requireAdmin, async (req, res) => {
     const { id } = req.params;
     await prisma.client.delete({ where: { id } });
     return res.json({ success: true });
-  } catch (error) {
-    console.error("Failed to delete client:", error);
+  } catch (_) {
     return res.status(500).json({ error: "Failed to delete client" });
   }
 });

@@ -30,7 +30,9 @@ type StatusCount = {
 type ProjectItem = {
   id: string;
   status: "PLANNING" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "CANCELLED";
+  budget?: number | null;
   createdAt: string | Date;
+  updatedAt: string | Date;
 };
 
 type TaskItem = {
@@ -45,6 +47,12 @@ type InvoiceItem = {
   amount: number;
   createdAt: string | Date;
   paidAt?: string | Date | null;
+  paidAmount?: number;
+  balance?: number;
+  source?: "PROJECT_BUDGET" | "TASK_BUDGET" | "CUSTOM";
+  project?: { id: string; title: string } | null;
+  task?: { id: string; title: string } | null;
+  payments?: Array<{ id: string; amount: number; paidAt: string | Date }>;
 };
 
 type StatsResponse = {
@@ -164,16 +172,18 @@ const isInDateRange = (value: string | Date | null | undefined, range: DateRange
   return rangeStart ? date >= rangeStart : true;
 };
 
-const getInvoiceDate = (invoice: InvoiceItem) => invoice.paidAt || invoice.createdAt;
+const getInvoiceDate = (invoice: InvoiceItem) => invoice.payments?.[0]?.paidAt || invoice.createdAt;
+const getProjectReportDate = (project: ProjectItem) =>
+  project.status === "COMPLETED" ? project.updatedAt : project.createdAt;
 
-const buildRevenueTrend = (invoices: InvoiceItem[]) => {
-  const paidInvoices = invoices.filter((invoice) => invoice.status === "PAID");
+const buildRevenueTrend = (invoices: InvoiceItem[], range: DateRangeFilter) => {
   const grouped = new Map<string, number>();
 
-  paidInvoices.forEach((invoice) => {
-    const date = new Date(invoice.paidAt || invoice.createdAt);
+  invoices.flatMap((invoice) => invoice.payments || []).forEach((payment) => {
+    if (!isInDateRange(payment.paidAt, range)) return;
+    const date = new Date(payment.paidAt);
     const key = date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-    grouped.set(key, (grouped.get(key) || 0) + invoice.amount);
+    grouped.set(key, (grouped.get(key) || 0) + payment.amount);
   });
 
   return Array.from(grouped.entries()).map(([name, revenue]) => ({ name, revenue }));
@@ -223,8 +233,7 @@ export default function ReportsPage() {
       } else {
         setInvoices([]);
       }
-    } catch (error) {
-      console.error("Failed to fetch reports:", error);
+    } catch (_) {
       setStats(null);
       setProjects([]);
       setTasks([]);
@@ -242,7 +251,7 @@ export default function ReportsPage() {
     () =>
       projects.filter(
         (project) =>
-          isInDateRange(project.createdAt, dateRange) &&
+          isInDateRange(getProjectReportDate(project), dateRange) &&
           (projectStatusFilter === "all" || project.status === projectStatusFilter)
       ),
     [dateRange, projectStatusFilter, projects]
@@ -273,22 +282,20 @@ export default function ReportsPage() {
 
     return {
       totalOutstanding: filteredInvoices
-        .filter((invoice) => invoice.status !== "PAID")
-        .reduce((sum, invoice) => sum + invoice.amount, 0),
-      collectedThisMonth: filteredInvoices
-        .filter((invoice) => {
-          if (invoice.status !== "PAID") return false;
-          const paidDate = new Date(invoice.paidAt || invoice.createdAt);
+        .reduce((sum, invoice) => sum + (invoice.balance ?? Math.max(invoice.amount - (invoice.paidAmount || 0), 0)), 0),
+      collectedThisMonth: filteredInvoices.flatMap((invoice) => invoice.payments || [])
+        .filter((payment) => {
+          const paidDate = new Date(payment.paidAt);
           return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
         })
-        .reduce((sum, invoice) => sum + invoice.amount, 0),
-      totalPaid: filteredInvoices
-        .filter((invoice) => invoice.status === "PAID")
-        .reduce((sum, invoice) => sum + invoice.amount, 0),
+        .reduce((sum, payment) => sum + payment.amount, 0),
+      totalPaid: filteredInvoices.flatMap((invoice) => invoice.payments || [])
+        .filter((payment) => isInDateRange(payment.paidAt, dateRange))
+        .reduce((sum, payment) => sum + payment.amount, 0),
     };
-  }, [filteredInvoices]);
+  }, [dateRange, filteredInvoices]);
 
-  const revenueTrendData = useMemo(() => buildRevenueTrend(filteredInvoices), [filteredInvoices]);
+  const revenueTrendData = useMemo(() => buildRevenueTrend(filteredInvoices, dateRange), [dateRange, filteredInvoices]);
 
   const projectStatusData = useMemo<StatusCount[]>(
     () => countByStatus(filteredProjects, projectStatusLabels),
@@ -302,9 +309,17 @@ export default function ReportsPage() {
     () => countByStatus(filteredInvoices, invoiceStatusLabels),
     [filteredInvoices]
   );
+  const invoiceSourceData = useMemo<StatusCount[]>(() => [
+    { name: "Project budgets", value: filteredInvoices.filter((invoice) => invoice.source === "PROJECT_BUDGET").length },
+    { name: "Task budgets", value: filteredInvoices.filter((invoice) => invoice.source === "TASK_BUDGET").length },
+    { name: "Custom", value: filteredInvoices.filter((invoice) => !invoice.source || invoice.source === "CUSTOM").length },
+  ], [filteredInvoices]);
 
   const completionRate = filteredTasks.length ? Math.round((filteredTasks.filter((task) => task.status === "DONE").length / filteredTasks.length) * 100) : 0;
   const paidInvoiceRate = filteredInvoices.length ? Math.round((filteredInvoices.filter((invoice) => invoice.status === "PAID").length / filteredInvoices.length) * 100) : 0;
+  const completedProjectValue = filteredProjects
+    .filter((project) => project.status === "COMPLETED")
+    .reduce((sum, project) => sum + (project.budget || 0), 0);
 
   const summaryCards = [
     {
@@ -329,7 +344,14 @@ export default function ReportsPage() {
       bg: "bg-emerald-500/10",
     },
     {
-      label: "Total Paid",
+      label: "Completed Value",
+      value: `$${completedProjectValue.toLocaleString()}`,
+      icon: CheckCircle,
+      color: "text-cyan-300",
+      bg: "bg-cyan-500/10",
+    },
+    {
+      label: "Invoice Payments",
       value: `$${filteredInvoiceTotals.totalPaid.toLocaleString()}`,
       icon: DollarSign,
       color: "text-amber-300",
@@ -371,7 +393,7 @@ export default function ReportsPage() {
         </div>
       </FloatingCard>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
         {summaryCards.map((card) => (
           <FloatingCard key={card.label} className="h-full">
             <div className="flex items-start justify-between gap-4">
@@ -392,9 +414,14 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-semibold">Revenue Trend</h2>
-              <p className="text-sm text-white/45">Paid invoices matching the current filters</p>
+              <p className="text-sm text-white/45">Cash collected from paid invoices matching the current filters</p>
             </div>
             <BarChart3 className="h-5 w-5 text-indigo-300" />
+          </div>
+          <div className="mb-6 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-4">
+            <p className="text-sm text-white/50">Completed project value</p>
+            <p className="text-2xl font-bold text-cyan-200">${completedProjectValue.toLocaleString()}</p>
+            <p className="mt-1 text-xs text-white/40">Based on project budgets; kept separate from invoice payments to avoid double-counting.</p>
           </div>
           <div className="h-80">
             {isLoading ? (
@@ -447,10 +474,11 @@ export default function ReportsPage() {
         </FloatingCard>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <StatusPanel title="Project Status" icon={FolderKanban} data={projectStatusData} chartType="pie" />
         <StatusPanel title="Task Status" icon={CheckCircle} data={taskStatusData} chartType="bar" />
         <StatusPanel title="Invoice Status" icon={FileText} data={invoiceStatusData} chartType="bar" />
+        <StatusPanel title="Invoice Origin" icon={DollarSign} data={invoiceSourceData} chartType="pie" />
       </div>
     </div>
   );
@@ -473,7 +501,7 @@ function ReportSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 !w-full rounded-xl border border-white/10 bg-white/5 !px-4 !py-0 text-sm leading-none text-white/75"
+        className="h-11 !w-full rounded-xl border border-white/10 bg-white/5 !pl-4 !pr-10 !py-0 text-sm leading-none text-white/75"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
