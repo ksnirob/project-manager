@@ -57,4 +57,66 @@ async function syncBudgetInvoice(transaction, where, amount, fallback) {
   });
 }
 
-module.exports = { createInvoiceNumber, paymentState, createBudgetInvoice, syncBudgetInvoice };
+async function ensureExistingBudgetInvoices(prisma) {
+  const projects = await prisma.project.findMany({
+    include: {
+      invoices: { select: { source: true, taskId: true } },
+      tasks: { select: { id: true, title: true, budget: true } },
+    },
+  });
+
+  let created = 0;
+
+  for (const project of projects) {
+    created += await prisma.$transaction(async (transaction) => {
+      let projectCreated = 0;
+      const taskBudget = project.tasks.reduce((sum, task) => sum + (task.budget || 0), 0);
+      const projectOnlyBudget = Math.max((project.budget || 0) - taskBudget, 0);
+
+      if (
+        projectOnlyBudget > 0 &&
+        !project.invoices.some((invoice) => invoice.source === "PROJECT_BUDGET")
+      ) {
+        await createBudgetInvoice(transaction, {
+          clientId: project.clientId,
+          projectId: project.id,
+          amount: projectOnlyBudget,
+          source: "PROJECT_BUDGET",
+          notes: `Automatically created from existing project budget: ${project.title}`,
+        });
+        projectCreated += 1;
+      }
+
+      for (const task of project.tasks) {
+        if (
+          (task.budget || 0) > 0 &&
+          !project.invoices.some(
+            (invoice) => invoice.source === "TASK_BUDGET" && invoice.taskId === task.id
+          )
+        ) {
+          await createBudgetInvoice(transaction, {
+            clientId: project.clientId,
+            projectId: project.id,
+            taskId: task.id,
+            amount: task.budget,
+            source: "TASK_BUDGET",
+            notes: `Automatically created from existing task budget: ${task.title}`,
+          });
+          projectCreated += 1;
+        }
+      }
+
+      return projectCreated;
+    });
+  }
+
+  return created;
+}
+
+module.exports = {
+  createInvoiceNumber,
+  paymentState,
+  createBudgetInvoice,
+  syncBudgetInvoice,
+  ensureExistingBudgetInvoices,
+};

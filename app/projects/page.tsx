@@ -905,12 +905,12 @@ export default function ProjectsPage() {
                           <span className="text-amber-300">Due ${(project.dueAmount ?? project.budget).toLocaleString()}</span>
                         </div>
                       )}
-                      {typeof project.taskBudgetAdded === "number" && project.taskBudgetAdded > 0 && (
+                      {/* {typeof project.taskBudgetAdded === "number" && project.taskBudgetAdded > 0 && (
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-indigo-300">Task Budget Added</span>
                           <span className="text-indigo-200">+${project.taskBudgetAdded.toLocaleString()}</span>
                         </div>
-                      )}
+                      )} */}
 
                       <div className={`text-xs ${isCompleted ? "completed-project-created" : "text-white/45"}`}>
                         Created {new Date(project.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
