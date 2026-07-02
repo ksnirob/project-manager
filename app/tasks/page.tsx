@@ -6,11 +6,12 @@ import { createPortal } from "react-dom";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, GripVertical, Trash2, Edit, Calendar, Clock, CircleDollarSign } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit, Calendar, Clock, Banknote } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createTask, updateTask, updateTaskStatus, deleteTask } from "@/lib/actions";
 import { apiFetch } from "@/lib/api";
+import { CurrencyAmount } from "@/components/ui/CurrencyAmount";
 import type { Task, TaskStatus, TaskPriority, Project, Client } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -421,7 +422,7 @@ function KanbanBoardContent() {
                                                 )}
                                                 {typeof fullTask?.budget === "number" && fullTask.budget > 0 && (
                                                   <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                                                    <CircleDollarSign size={11} /> ${fullTask.budget.toLocaleString()}
+                                                    <Banknote size={11} /> <CurrencyAmount value={fullTask.budget} />
                                                   </span>
                                                 )}
                                               </div>
@@ -524,7 +525,7 @@ function KanbanBoardContent() {
               onClick={() => setHasBudget((prev) => !prev)}
               className={`flex w-full items-center justify-between text-sm ${hasBudget ? "text-emerald-300" : "text-white/60"}`}
             >
-              <span className="flex items-center gap-2"><CircleDollarSign size={17} /> Add task budget</span>
+              <span className="flex items-center gap-2"><Banknote size={17} /> Add task budget</span>
               <span>{hasBudget ? "Enabled" : "Optional"}</span>
             </button>
             {hasBudget && (

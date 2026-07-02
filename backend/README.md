@@ -18,7 +18,7 @@ Do not upload `node_modules` from local machine.
 
 Set these in cPanel Node.js app:
 
-- `DATABASE_URL=mysql://footgxhh_project-manager:Ml3p%23TAN%2Ca%2Cw@162.0.215.44:3306/footgxhh_project-manager`
+- `DATABASE_URL=mysql://DATABASE_USER:DATABASE_PASSWORD@localhost:3306/DATABASE_NAME`
 - `FRONTEND_URL=https://your-vercel-app.vercel.app`
 - `NODE_ENV=production`
 
@@ -40,6 +40,27 @@ npx prisma db pull
 npx prisma generate
 npm start
 ```
+
+## Production deployment commands
+
+### Do not routinely run these commands
+
+```bash
+npx prisma migrate deploy
+npx prisma db push
+npx prisma generate
+```
+
+Run these commands after pushing backend changes:
+
+```bash
+source /home/footgxhh/nodevenv/project-manager-backend/22/bin/activate
+cd /home/footgxhh/project-manager-backend
+npm install --ignore-scripts
+npx prisma generate
+```
+
+After the commands finish, restart the `api.ksnirob.com` Node.js application from cPanel.
 
 ## API endpoints
 

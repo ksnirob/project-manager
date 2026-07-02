@@ -8,7 +8,7 @@ import {
   Plus,
   MoreVertical,
   Calendar,
-  DollarSign,
+  Banknote,
   Edit,
   Trash2,
   Folder,
@@ -34,6 +34,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createProject, updateProject, deleteProject } from "@/lib/actions";
 import { apiFetch } from "@/lib/api";
+import { CURRENCY_SYMBOL, formatCurrency } from "@/lib/currency";
+import { CurrencyAmount } from "@/components/ui/CurrencyAmount";
 import type { Project, Client, ProjectStatus } from "@prisma/client";
 
 type TimeRange = "all" | "weekly" | "monthly" | "yearly";
@@ -894,21 +896,21 @@ export default function ProjectsPage() {
                         </div>
                         {project.budget && (
                           <div className={`flex items-center gap-2 ${isCompleted ? "completed-project-meta" : "text-white/60"}`}>
-                            <DollarSign size={16} className={isCompleted ? "completed-project-meta-icon" : "text-emerald-400/60"} />
-                            <span>${project.budget.toLocaleString()}</span>
+                            <Banknote size={16} className={isCompleted ? "completed-project-meta-icon" : "text-emerald-400/60"} />
+                            <CurrencyAmount value={project.budget} />
                           </div>
                         )}
                       </div>
                       {project.budget && (
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-emerald-300">Paid ${(project.paidAmount || 0).toLocaleString()}</span>
-                          <span className="text-amber-300">Due ${(project.dueAmount ?? project.budget).toLocaleString()}</span>
+                          <CurrencyAmount className="text-emerald-300" prefix="Paid " value={project.paidAmount || 0} />
+                          <CurrencyAmount className="text-amber-300" prefix="Due " value={project.dueAmount ?? project.budget} />
                         </div>
                       )}
                       {/* {typeof project.taskBudgetAdded === "number" && project.taskBudgetAdded > 0 && (
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-indigo-300">Task Budget Added</span>
-                          <span className="text-indigo-200">+${project.taskBudgetAdded.toLocaleString()}</span>
+                          <CurrencyAmount className="text-indigo-200" prefix="+" value={project.taskBudgetAdded} />
                         </div>
                       )} */}
 
@@ -934,7 +936,7 @@ export default function ProjectsPage() {
                           isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        <span className="hidden xl:inline">View Tasks</span>
+                        <span className="hidden xl:inline">Tasks</span>
                         <span className="inline xl:hidden">Tasks</span>
                         <ArrowRight size={14} className="shrink-0" />
                       </Link>
@@ -945,7 +947,7 @@ export default function ProjectsPage() {
                           isCompleted ? "completed-project-action" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"
                         }`}
                       >
-                        <span className="hidden xl:inline">View Project</span>
+                        <span className="hidden xl:inline">Project</span>
                         <span className="inline xl:hidden">Project</span>
                         <Eye size={14} className="shrink-0" />
                       </button>
@@ -1009,7 +1011,7 @@ export default function ProjectsPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-white/80">Budget ($)</label>
+              <label className="text-sm font-medium text-white/80">Budget ({CURRENCY_SYMBOL})</label>
               <input
                 type="number"
                 name="budget"
@@ -1191,18 +1193,18 @@ export default function ProjectsPage() {
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Budget</p>
                 <p className="text-white/90 font-medium">
-                  {typeof viewingProject.budget === "number" ? `$${viewingProject.budget.toLocaleString()}` : "-"}
+                  {typeof viewingProject.budget === "number" ? formatCurrency(viewingProject.budget) : "-"}
                 </p>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Payments</p>
-                <p className="font-medium text-emerald-300">Paid ${(viewingProject.paidAmount || 0).toLocaleString()}</p>
-                <p className="mt-1 text-sm text-amber-300">Due ${(viewingProject.dueAmount || 0).toLocaleString()}</p>
+                <CurrencyAmount className="font-medium text-emerald-300" prefix="Paid " value={viewingProject.paidAmount || 0} />
+                <CurrencyAmount className="mt-1 block text-sm text-amber-300" prefix="Due " value={viewingProject.dueAmount || 0} />
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 md:col-span-2">
                 <p className="text-xs uppercase tracking-wide text-white/50 mb-2">Task Budget History</p>
                 <p className="text-sm text-indigo-200 mb-3">
-                  Total Added from Tasks: +${(viewingProject.taskBudgetAdded || 0).toLocaleString()}
+                  Total Added from Tasks: {formatCurrency(viewingProject.taskBudgetAdded || 0).replace(CURRENCY_SYMBOL, `+${CURRENCY_SYMBOL}`)}
                 </p>
                 {viewingProject.taskBudgetHistory && viewingProject.taskBudgetHistory.length > 0 ? (
                   <div className="space-y-2">
@@ -1221,7 +1223,7 @@ export default function ProjectsPage() {
                             })}
                           </p>
                         </div>
-                        <p className="text-sm font-medium text-indigo-200">+${entry.amount.toLocaleString()}</p>
+                        <CurrencyAmount className="text-sm font-medium text-indigo-200" prefix="+" value={entry.amount} />
                       </div>
                     ))}
                   </div>
@@ -1297,7 +1299,7 @@ export default function ProjectsPage() {
                 className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-sm text-indigo-200 transition-colors"
                 onClick={closeViewProjectModal}
               >
-                View Project Tasks <ArrowRight size={14} />
+                Project Tasks <ArrowRight size={14} />
               </Link>
             </div>
           </div>

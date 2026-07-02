@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { formatCurrency } from "@/lib/currency";
+import { CurrencyAmount } from "@/components/ui/CurrencyAmount";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import {
@@ -19,7 +21,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Briefcase, CheckCircle, DollarSign, FileText, FolderKanban, RefreshCw, Users } from "lucide-react";
+import { BarChart3, Briefcase, CheckCircle, Banknote, FileText, FolderKanban, RefreshCw, Users } from "lucide-react";
 import Link from "next/link";
 
 type StatusCount = {
@@ -345,15 +347,15 @@ export default function ReportsPage() {
     },
     {
       label: "Completed Value",
-      value: `$${completedProjectValue.toLocaleString()}`,
+      value: formatCurrency(completedProjectValue),
       icon: CheckCircle,
       color: "text-cyan-300",
       bg: "bg-cyan-500/10",
     },
     {
       label: "Invoice Payments",
-      value: `$${filteredInvoiceTotals.totalPaid.toLocaleString()}`,
-      icon: DollarSign,
+      value: formatCurrency(filteredInvoiceTotals.totalPaid),
+      icon: Banknote,
       color: "text-amber-300",
       bg: "bg-amber-500/10",
     },
@@ -420,7 +422,7 @@ export default function ReportsPage() {
           </div>
           <div className="mb-6 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-4">
             <p className="text-sm text-white/50">Completed project value</p>
-            <p className="text-2xl font-bold text-cyan-200">${completedProjectValue.toLocaleString()}</p>
+            <CurrencyAmount className="text-2xl font-bold text-cyan-200" value={completedProjectValue} />
             <p className="mt-1 text-xs text-white/40">Based on project budgets; kept separate from invoice payments to avoid double-counting.</p>
           </div>
           <div className="h-80">
@@ -431,13 +433,13 @@ export default function ReportsPage() {
                 <AreaChart data={revenueTrendData} margin={{ left: -20, right: 12, top: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                   <XAxis dataKey="name" stroke={chartAxisColor} axisLine={false} tickLine={false} />
-                  <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
+                  <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip
                     contentStyle={chartTooltipStyle}
                     labelStyle={chartTooltipLabelStyle}
                     itemStyle={chartTooltipItemStyle}
                     cursor={{ stroke: "var(--chart-cursor-stroke)", strokeWidth: 1 }}
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, "Revenue"]}
+                    formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#818cf8" strokeWidth={3} fill="#6366f1" fillOpacity={0.18} />
                 </AreaChart>
@@ -459,11 +461,11 @@ export default function ReportsPage() {
           <div className="space-y-4">
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <p className="text-sm text-white/45">Outstanding</p>
-              <p className="text-2xl font-bold">${filteredInvoiceTotals.totalOutstanding.toLocaleString()}</p>
+              <CurrencyAmount className="text-2xl font-bold" value={filteredInvoiceTotals.totalOutstanding} />
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 p-4">
               <p className="text-sm text-white/45">Collected This Month</p>
-              <p className="text-2xl font-bold">${filteredInvoiceTotals.collectedThisMonth.toLocaleString()}</p>
+              <CurrencyAmount className="text-2xl font-bold" value={filteredInvoiceTotals.collectedThisMonth} />
             </div>
             <Link href="/invoices" className="block">
               <AnimatedButton variant="secondary" className="w-full">
@@ -478,7 +480,7 @@ export default function ReportsPage() {
         <StatusPanel title="Project Status" icon={FolderKanban} data={projectStatusData} chartType="pie" />
         <StatusPanel title="Task Status" icon={CheckCircle} data={taskStatusData} chartType="bar" />
         <StatusPanel title="Invoice Status" icon={FileText} data={invoiceStatusData} chartType="bar" />
-        <StatusPanel title="Invoice Origin" icon={DollarSign} data={invoiceSourceData} chartType="pie" />
+        <StatusPanel title="Invoice Origin" icon={Banknote} data={invoiceSourceData} chartType="pie" />
       </div>
     </div>
   );

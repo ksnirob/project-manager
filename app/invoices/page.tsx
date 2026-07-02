@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, Eye, DollarSign } from "lucide-react";
+import { Plus, Download, FileText, Search, CheckCircle, Clock, AlertCircle, Edit, Trash2, MoreVertical, Eye, Banknote } from "lucide-react";
 import { motion } from "framer-motion";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/actions";
 import { apiFetch } from "@/lib/api";
+import { CURRENCY_SYMBOL, formatCurrency } from "@/lib/currency";
+import { CurrencyAmount } from "@/components/ui/CurrencyAmount";
 import type { Invoice, InvoiceStatus, Client, InvoiceSource } from "@prisma/client";
 import { jsPDF } from "jspdf";
 
@@ -269,7 +271,7 @@ export default function InvoicesPage() {
     doc.setFontSize(10);
     doc.text(`Status: ${statusLabel}`, pageWidth - 210, 218);
     doc.text(`Due Date: ${dueDate}`, pageWidth - 210, 238);
-    doc.text(`Amount: $${invoice.amount.toLocaleString()}`, pageWidth - 210, 258);
+    doc.text(`Amount: ${formatCurrency(invoice.amount)}`, pageWidth - 210, 258);
 
     doc.setDrawColor(226, 232, 240);
     doc.line(48, 312, pageWidth - 48, 312);
@@ -282,14 +284,14 @@ export default function InvoicesPage() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.text(`Services for ${invoice.client.name}`, 48, 366);
-    doc.text(`$${invoice.amount.toLocaleString()}`, pageWidth - 48, 366, { align: "right" });
+    doc.text(formatCurrency(invoice.amount), pageWidth - 48, 366, { align: "right" });
 
     doc.line(48, 384, pageWidth - 48, 384);
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("Total", pageWidth - 150, 414);
-    doc.text(`$${invoice.amount.toLocaleString()}`, pageWidth - 48, 414, { align: "right" });
+    doc.text(formatCurrency(invoice.amount), pageWidth - 48, 414, { align: "right" });
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
@@ -508,10 +510,10 @@ export default function InvoicesPage() {
                         <div className="lg:text-right min-w-[120px]">
                           <p className="text-xs text-white/40 mb-0.5">Amount</p>
                           <p className="text-xl font-bold text-white/90">
-                            ${invoice.amount.toLocaleString()}
+                            <CurrencyAmount value={invoice.amount} />
                           </p>
-                          <p className="text-[11px] text-white/45">Paid ${getInvoicePaidAmount(invoice).toLocaleString()}</p>
-                          <p className="text-[11px] text-white/45">Due ${getInvoiceDueAmount(invoice).toLocaleString()}</p>
+                          <CurrencyAmount className="block text-[11px] text-white/45" prefix="Paid " value={getInvoicePaidAmount(invoice)} />
+                          <CurrencyAmount className="block text-[11px] text-white/45" prefix="Due " value={getInvoiceDueAmount(invoice)} />
                         </div>
 
                         <div className="flex items-center gap-1 lg:ml-4">
@@ -521,7 +523,7 @@ export default function InvoicesPage() {
                               className="p-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 transition-colors"
                               title="Record payment"
                             >
-                              <DollarSign size={16} />
+                              <Banknote size={16} />
                             </button>
                           )}
                           <button
@@ -579,21 +581,21 @@ export default function InvoicesPage() {
               <div>
                 <p className="text-sm text-white/50 mb-1">Total Outstanding</p>
                 <p className="text-3xl font-bold text-red-400">
-                  ${totalOutstandingInRange.toLocaleString()}
+                  <CurrencyAmount value={totalOutstandingInRange} />
                 </p>
               </div>
               <div className="w-full h-px bg-white/10" />
               <div>
                 <p className="text-sm text-white/50 mb-1">Collected ({timeRange === "all" ? "All Time" : timeRange[0].toUpperCase() + timeRange.slice(1)})</p>
                 <p className="text-2xl font-bold text-emerald-400">
-                  ${collectedInRange.toLocaleString()}
+                  <CurrencyAmount value={collectedInRange} />
                 </p>
               </div>
               <div className="w-full h-px bg-white/10" />
               <div>
                 <p className="text-sm text-white/50 mb-1">Total Paid ({timeRange === "all" ? "All Time" : timeRange[0].toUpperCase() + timeRange.slice(1)})</p>
                 <p className="text-2xl font-bold text-indigo-400">
-                  ${totalPaidInRange.toLocaleString()}
+                  <CurrencyAmount value={totalPaidInRange} />
                 </p>
               </div>
             </div>
@@ -651,7 +653,7 @@ export default function InvoicesPage() {
             </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-white/80">Amount ($) *</label>
+            <label className="text-sm font-medium text-white/80">Amount ({CURRENCY_SYMBOL}) *</label>
             <input
               type="number"
               name="amount"
@@ -724,7 +726,7 @@ export default function InvoicesPage() {
           <form key={editingPayment?.id || "new-payment"} className="space-y-4" onSubmit={handleRecordPayment}>
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
               <div className="flex justify-between"><span className="text-white/50">Invoice</span><span>{paymentInvoice.invoiceNo}</span></div>
-              <div className="mt-2 flex justify-between"><span className="text-white/50">Balance due</span><span className="font-semibold text-amber-300">${getInvoiceDueAmount(paymentInvoice).toLocaleString()}</span></div>
+              <div className="mt-2 flex justify-between"><span className="text-white/50">Balance due</span><CurrencyAmount className="font-semibold text-amber-300" value={getInvoiceDueAmount(paymentInvoice)} /></div>
             </div>
             {paymentInvoice.payments && paymentInvoice.payments.length > 0 && (
               <div className="space-y-2">
@@ -738,7 +740,7 @@ export default function InvoicesPage() {
                   {paymentInvoice.payments.map((payment) => (
                     <div key={payment.id} className={`flex items-center justify-between rounded-xl border p-3 ${editingPayment?.id === payment.id ? "border-indigo-400/50 bg-indigo-500/10" : "border-white/10 bg-white/[0.03]"}`}>
                       <div>
-                        <p className="font-semibold text-emerald-300">${payment.amount.toLocaleString()}</p>
+                        <CurrencyAmount className="font-semibold text-emerald-300" value={payment.amount} />
                         <p className="text-xs text-white/45">{new Date(payment.paidAt).toLocaleDateString()} · {payment.method || "No method"}{payment.reference ? ` · ${payment.reference}` : ""}</p>
                       </div>
                       <button type="button" onClick={() => setEditingPayment(payment)} className="rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white">Edit</button>

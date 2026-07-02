@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FloatingCard } from "@/components/ui/FloatingCard";
 import { AnimatedButton } from "@/components/ui/AnimatedButton";
-import { Users, Briefcase, CheckCircle, TrendingUp, Clock, DollarSign, ArrowRight, FileText, Folder, ListTodo } from "lucide-react";
+import { Users, Briefcase, CheckCircle, TrendingUp, Clock, Banknote, ArrowRight, FileText, Folder, ListTodo } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -16,6 +16,8 @@ import {
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { formatCompactCurrency, formatCurrency } from "@/lib/currency";
+import { CurrencyAmount } from "@/components/ui/CurrencyAmount";
 
 const chartGridColor = "var(--chart-grid)";
 const chartAxisColor = "var(--chart-axis)";
@@ -102,7 +104,7 @@ export default function Dashboard() {
     { title: "Total Clients", value: stats?.totalClients || 0, icon: Users, color: "text-indigo-400", bg: "bg-indigo-500/10", link: "/clients" },
     { title: "Active Projects", value: stats?.activeProjects || 0, icon: Briefcase, color: "text-pink-400", bg: "bg-pink-500/10", link: "/projects" },
     { title: "Tasks Completed", value: stats?.completedTasks || 0, icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/10", link: "/tasks" },
-    { title: "Monthly Revenue", value: `$${(stats?.monthlyRevenue || 0).toLocaleString()}`, icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/10", link: "/invoices" },
+    { title: "Monthly Revenue", value: formatCurrency(stats?.monthlyRevenue || 0), icon: TrendingUp, color: "text-amber-400", bg: "bg-amber-500/10", link: "/invoices" },
   ];
 
   return (
@@ -170,13 +172,13 @@ export default function Dashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                     <XAxis dataKey="name" stroke={chartAxisColor} axisLine={false} tickLine={false} />
-                    <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={(val) => `$${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
+                    <YAxis stroke={chartAxisColor} axisLine={false} tickLine={false} tickFormatter={formatCompactCurrency} />
                     <Tooltip
                       contentStyle={chartTooltipStyle}
                       labelStyle={chartTooltipLabelStyle}
                       itemStyle={chartTooltipItemStyle}
                       cursor={{ stroke: "var(--chart-cursor-stroke)", strokeWidth: 1 }}
-                      formatter={(value) => [`$${Number(value).toLocaleString()}`, "Revenue"]}
+                      formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
                     />
                     <Area
                       type="monotone"
@@ -229,11 +231,11 @@ export default function Dashboard() {
               <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                    <DollarSign size={20} />
+                    <Banknote size={20} />
                   </div>
                   <div>
                     <p className="text-sm text-white/50">Total Revenue</p>
-                    <p className="text-xl font-semibold">{isLoading ? "..." : `$${(stats?.totalRevenue || 0).toLocaleString()}`}</p>
+                    <p className="text-xl font-semibold">{isLoading ? "..." : formatCurrency(stats?.totalRevenue || 0)}</p>
                   </div>
                 </div>
               </div>
@@ -329,7 +331,7 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-sm">${invoice.amount?.toLocaleString()}</p>
+                      <CurrencyAmount className="font-medium text-sm" value={invoice.amount || 0} />
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                         invoice.status === "PAID" ? "bg-emerald-500/20 text-emerald-400" :
                         invoice.status === "PARTIAL" ? "bg-amber-500/20 text-amber-400" :
