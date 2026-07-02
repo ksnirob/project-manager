@@ -21,7 +21,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Briefcase, CheckCircle, Banknote, FileText, FolderKanban, RefreshCw, Users } from "lucide-react";
+import { BarChart3, Briefcase, CheckCircle, Banknote, FileText, FolderKanban, RefreshCw, SlidersHorizontal, Users } from "lucide-react";
 import Link from "next/link";
 
 type StatusCount = {
@@ -202,6 +202,7 @@ export default function ReportsPage() {
   const [projectStatusFilter, setProjectStatusFilter] = useState<ProjectStatusFilter>("all");
   const [taskStatusFilter, setTaskStatusFilter] = useState<TaskStatusFilter>("all");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<InvoiceStatusFilter>("all");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const fetchReports = useCallback(async () => {
     setIsLoading(true);
@@ -368,13 +369,30 @@ export default function ReportsPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-2">Reports</h1>
           <p className="text-white/50">Review project, task, and invoice performance in one place.</p>
         </div>
-        <AnimatedButton type="button" onClick={fetchReports} variant="secondary" className="w-full md:w-auto">
+        <AnimatedButton type="button" onClick={fetchReports} variant="secondary" className="hidden md:flex md:w-auto">
           <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           Refresh
         </AnimatedButton>
       </div>
 
-      <FloatingCard className="p-4">
+      <div className="grid grid-cols-2 gap-3 md:hidden">
+        <AnimatedButton
+          type="button"
+          variant="secondary"
+          onClick={() => setShowMobileFilters((visible) => !visible)}
+          className="w-full justify-center"
+          aria-expanded={showMobileFilters}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filters
+        </AnimatedButton>
+        <AnimatedButton type="button" onClick={fetchReports} variant="secondary" className="w-full justify-center">
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </AnimatedButton>
+      </div>
+
+      <FloatingCard className={`${showMobileFilters ? "block" : "hidden"} p-4 md:block`}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
           <ReportSelect label="Date Range" value={dateRange} onChange={(value) => setDateRange(value as DateRangeFilter)} options={dateRangeOptions} />
           <ReportSelect label="Project Status" value={projectStatusFilter} onChange={(value) => setProjectStatusFilter(value as ProjectStatusFilter)} options={projectStatusOptions} />

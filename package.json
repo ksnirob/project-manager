@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-local.js",
+    "dev:next": "next dev",
+    "dev:backend": "node backend/server.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
