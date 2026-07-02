@@ -100,8 +100,15 @@ projectsRouter.patch("/:id", requireAdmin, async (req, res) => {
     const existing = await prisma.project.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: "Project not found" });
 
+    const nextClientId = data.clientId || existing.clientId;
+    if (nextClientId !== existing.clientId) {
+      const client = await prisma.client.findUnique({ where: { id: nextClientId } });
+      if (!client) return res.status(400).json({ error: "Selected client was not found" });
+    }
+
     const payload = {
       title: data.title,
+      clientId: data.clientId,
       budget: typeof data.budget === "number" ? data.budget : undefined,
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       type: data.type,
@@ -123,9 +130,15 @@ projectsRouter.patch("/:id", requireAdmin, async (req, res) => {
 
     const project = await prisma.$transaction(async (transaction) => {
       const updatedProject = await transaction.project.update({ where: { id }, data: payload });
+      if (nextClientId !== existing.clientId) {
+        await transaction.invoice.updateMany({
+          where: { projectId: id },
+          data: { clientId: nextClientId },
+        });
+      }
       if (typeof data.budget === "number" && data.budget !== existing.budget) {
         await syncBudgetInvoice(transaction, { projectId: id, source: "PROJECT_BUDGET" }, Math.max(data.budget, 0), {
-          clientId: existing.clientId,
+          clientId: nextClientId,
           projectId: id,
           source: "PROJECT_BUDGET",
           notes: `Automatically created from project budget: ${existing.title}`,
